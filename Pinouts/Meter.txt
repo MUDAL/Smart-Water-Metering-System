@@ -1,0 +1,10 @@
+Master [ESP32]:
+1. NRF24L01 (SCK: 18, MISO: 19, MOSI: 23, SS: 5)
+2. LCD (SDA: 21, SCL: 22)
+3. Keypad (Row: 4,13,14,25  Column: 26,27,32,33)
+4. Master-Node Interface (Serial2 RX: 16, Serial2 TX: 17)
+
+Node [Arduino Nano]:
+1. SD card module
+2. Flow sensors
+3. Solenoid valves

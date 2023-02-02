@@ -1,0 +1,3 @@
+Utility system [ESP32] 
+1. GSM (Serial2 RX: 16, TX: 17) 
+2. NRF24L01 (SCK: 18, MISO: 19, MOSI: 23, SS: 5)
