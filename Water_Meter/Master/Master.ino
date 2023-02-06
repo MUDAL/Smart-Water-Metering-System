@@ -7,12 +7,19 @@
 #include "hmi.h"
 #include "MNI.h"
 
+//Type(s)
+typedef struct
+{
+  float volume1;
+  float volume2;
+  float volume3;  
+}sensor_t;
+
 //RTOS Handle(s)
 TaskHandle_t nodeTaskHandle;
 
 void setup() 
 {
-  // put your setup code here, to run once:
   setCpuFrequencyMhz(80);
   Serial.begin(115200);
   xTaskCreatePinnedToCore(ApplicationTask,"",30000,NULL,1,NULL,1);
@@ -22,7 +29,6 @@ void setup()
 
 void loop() 
 {
-  // put your main code here, to run repeatedly:
 }
 
 void ApplicationTask(void* pvParameters)
@@ -36,12 +42,14 @@ void ApplicationTask(void* pvParameters)
   //Startup message
   lcd.init();
   lcd.backlight();
-  lcd.print("  SMART WATER METER");
+  lcd.print(" SMART WATER METER");
+  lcd.setCursor(5,1);
+  lcd.print("BY OLTOSIN");
   vTaskDelay(pdMS_TO_TICKS(1500));
-  lcd.setCursor(0,1);
-  lcd.print("STATUS: ");
   lcd.setCursor(0,2);
-  lcd.print("LOADING...");
+  lcd.print("STATUS: ");
+  lcd.setCursor(0,3);
+  lcd.print("INITIALIZING...");
   vTaskDelay(pdMS_TO_TICKS(1500));
   lcd.clear();
   vTaskResume(nodeTaskHandle);
