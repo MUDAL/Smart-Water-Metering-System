@@ -1,3 +1,4 @@
+#include <Preferences.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h> //Version 1.1.2
 #include <SPI.h>
@@ -6,6 +7,12 @@
 #include "keypad.h"
 #include "hmi.h"
 #include "MNI.h"
+
+namespace ESP32Core
+{
+  const uint8_t core0 = 0;
+  const uint8_t core1 = 1;
+};
 
 //Type(s)
 typedef struct
@@ -22,9 +29,9 @@ void setup()
 {
   setCpuFrequencyMhz(80);
   Serial.begin(115200);
-  xTaskCreatePinnedToCore(ApplicationTask,"",30000,NULL,1,NULL,1);
-  xTaskCreatePinnedToCore(NodeTask,"",25000,NULL,1,&nodeTaskHandle,1);
-  xTaskCreatePinnedToCore(UtilityTask,"",25000,NULL,1,NULL,1);
+  xTaskCreatePinnedToCore(ApplicationTask,"",30000,NULL,1,NULL,ESP32Core::core0);
+  xTaskCreatePinnedToCore(NodeTask,"",25000,NULL,1,&nodeTaskHandle,ESP32Core::core1);
+  xTaskCreatePinnedToCore(UtilityTask,"",25000,NULL,1,NULL,ESP32Core::core1);
 }
 
 void loop() 
@@ -43,8 +50,11 @@ void ApplicationTask(void* pvParameters)
   lcd.init();
   lcd.backlight();
   lcd.print(" SMART WATER METER");
-  lcd.setCursor(5,1);
-  lcd.print("BY OLTOSIN");
+  lcd.setCursor(0,1);
+  for(uint8_t i = 0; i < 20; i++)
+  {
+    lcd.print('-');
+  }
   vTaskDelay(pdMS_TO_TICKS(1500));
   lcd.setCursor(0,2);
   lcd.print("STATUS: ");
