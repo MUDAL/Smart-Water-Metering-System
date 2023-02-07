@@ -9,6 +9,7 @@ class HMI
     typedef struct
     {
       uint8_t mainMenu;
+      uint8_t loginMenu;
     }row_t; //For LCD
     
     //Objects and variables
@@ -18,11 +19,13 @@ class HMI
     row_t currentRow; 
     
     //Methods
+    void DisplayInstructions(void);
     void PointToRow(char* heading1,char* heading2,
                     char* heading3,char* heading4,
                     uint8_t row);
     void ChangeStateTo(State nextState);
     void StateFunc_MainMenu(void);
+    void StateFunc_LoginMenu(void);
     
   public:
     HMI(LiquidCrystal_I2C* lcdPtr,Keypad* keypadPtr);
