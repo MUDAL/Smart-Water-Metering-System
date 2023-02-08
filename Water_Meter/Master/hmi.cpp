@@ -50,7 +50,6 @@ void HMI::DisplayInstructions(void)
           lcdPtr->clear();
           return;
         }
-        break;
     }
   }
 }
