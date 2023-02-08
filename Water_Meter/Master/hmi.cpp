@@ -6,7 +6,7 @@
 
 void HMI::DisplayInstructions(void)
 {
-  //Simple FSM to switch change info to be displayed
+  //Simple FSM to change info to be displayed
   const uint8_t displayState1 = 0;
   const uint8_t displayState2 = 1;
   uint8_t displayState = displayState1;
