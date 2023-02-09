@@ -8,12 +8,6 @@
 #include "hmi.h"
 #include "MNI.h"
 
-namespace ESP32Core
-{
-  const uint8_t core0 = 0;
-  const uint8_t core1 = 1;
-};
-
 //Type(s)
 typedef struct
 {
@@ -29,15 +23,18 @@ void setup()
 {
   setCpuFrequencyMhz(80);
   Serial.begin(115200);
-  xTaskCreatePinnedToCore(ApplicationTask,"",30000,NULL,1,NULL,ESP32Core::core0);
-  xTaskCreatePinnedToCore(NodeTask,"",25000,NULL,1,&nodeTaskHandle,ESP32Core::core1);
-  xTaskCreatePinnedToCore(UtilityTask,"",25000,NULL,1,NULL,ESP32Core::core1);
+  xTaskCreatePinnedToCore(ApplicationTask,"",30000,NULL,2,NULL,1);
+  xTaskCreatePinnedToCore(NodeTask,"",25000,NULL,1,&nodeTaskHandle,1);
+  xTaskCreatePinnedToCore(UtilityTask,"",25000,NULL,1,NULL,1);
 }
 
 void loop() 
 {
 }
 
+/**
+ * @brief Handles main application logic
+*/
 void ApplicationTask(void* pvParameters)
 {
   uint8_t rowPins[NUMBER_OF_ROWS] = {4,13,14,25};  
@@ -45,6 +42,7 @@ void ApplicationTask(void* pvParameters)
   static LiquidCrystal_I2C lcd(0x27,20,4);
   static Keypad keypad(rowPins,columnPins); 
   static HMI hmi(&lcd,&keypad);
+  hmi.RegisterCallback(ValidateLogin);
 
   //Startup message
   lcd.init();
@@ -67,6 +65,7 @@ void ApplicationTask(void* pvParameters)
   while(1)
   {
     hmi.Start(); 
+    vTaskDelay(pdMS_TO_TICKS(50));
   }
 }
 
@@ -116,5 +115,18 @@ void UtilityTask(void* pvParameters)
   {
     
   }
+}
+
+/**
+ * @brief Callback function that gets called when the user attempts
+ * to log in after entering his/her ID and PIN using the HMI.
+ * This function validates the login details of the user.
+*/
+void ValidateLogin(char* id,char* pin)
+{
+  Serial.print("ID = ");
+  Serial.println(id);
+  Serial.print("PIN = ");
+  Serial.println(pin);
 }
 
