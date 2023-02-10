@@ -8,6 +8,16 @@
 #include "hmi.h"
 #include "MNI.h"
 
+/**
+ * @brief Description of the storage of user-specific data in flash memory.
+ * Each user has a default value for ID, PIN, and phone number. These values   
+ * are to be changed by the user. The default values are hardcoded into the  
+ * ESP32's flash memory such that:
+ * 1. All IDs are stored in memory locations with labels "0","1", and "2".
+ * 2. All PINs are stored in memory locations with labels "3","4", and "5".
+ * 3. All phone numbers are stored in memory locations with labels "6","7", and "8".
+*/
+
 //Type(s)
 typedef struct
 {
@@ -18,14 +28,19 @@ typedef struct
 
 //RTOS Handle(s)
 TaskHandle_t nodeTaskHandle;
+//Object(s)
+Preferences preferences; //for accessing ESP32 flash memory
 
 void setup() 
 {
   setCpuFrequencyMhz(80);
   Serial.begin(115200);
+  preferences.begin("S-Meter",false);  
   xTaskCreatePinnedToCore(ApplicationTask,"",30000,NULL,2,NULL,1);
   xTaskCreatePinnedToCore(NodeTask,"",25000,NULL,1,&nodeTaskHandle,1);
   xTaskCreatePinnedToCore(UtilityTask,"",25000,NULL,1,NULL,1);
+  //preferences.putBytes("0","123A",11);
+  //preferences.putBytes("3","C24ADB",11);
 }
 
 void loop() 
@@ -120,13 +135,34 @@ void UtilityTask(void* pvParameters)
 /**
  * @brief Callback function that gets called when the user attempts
  * to log in after entering his/her ID and PIN using the HMI.
- * This function validates the login details of the user.
+ * This function validates the login details of the user by comparing  
+ * the ID and PIN entered via the HMI to the ID and PIN stored in the  
+ * ESP32's flash.
+ * @return Index unique to each user. This index can be used by other  
+ * callback functions to access details specific to a user.  
 */
-void ValidateLogin(char* id,char* pin)
+int ValidateLogin(char* id,uint8_t idSize,char* pin,uint8_t pinSize)
 {
-  Serial.print("ID = ");
-  Serial.println(id);
-  Serial.print("PIN = ");
-  Serial.println(pin);
+  int userIndex = -1;     
+  const uint8_t numOfUsers = 3;
+  for(uint8_t i = 0; i < numOfUsers; i++)
+  { 
+    char idFlash[idSize] = {0};
+    char pinFlash[pinSize] = {0};
+    char flashLoc[2] = {0};
+    flashLoc[0] = '0' + i;
+    preferences.getBytes(flashLoc,idFlash,idSize);
+    flashLoc[0] = '3' + i;
+    preferences.getBytes(flashLoc,pinFlash,pinSize);
+    if(!strcmp(id,idFlash) && !strcmp(pin,pinFlash))
+    {
+      Serial.println("SUCCESS");
+      Serial.print("Details found at index: ");
+      Serial.println(i);
+      userIndex = i;
+      break;
+    }
+  }
+  return userIndex;
 }
 

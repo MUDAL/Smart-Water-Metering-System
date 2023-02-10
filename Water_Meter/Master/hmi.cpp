@@ -116,6 +116,25 @@ void HMI::DisplayInstructions(void)
   }
 }
 
+void HMI::DisplayLoginError(void)
+{
+  lcdPtr->clear();
+  lcdPtr->print("LOGIN ERROR!!");
+  lcdPtr->setCursor(0,1);
+  lcdPtr->print("- TRY AGAIN OR ");
+  lcdPtr->setCursor(0,2);
+  lcdPtr->print("- CALL THE UTILITY");  
+}
+
+void HMI::DisplayLoginSuccess(void)
+{
+  lcdPtr->clear();
+  lcdPtr->print("LOGIN SUCCESSFUL");
+  lcdPtr->setCursor(0,1);
+  lcdPtr->print("WELCOME USER: ");
+  lcdPtr->print(userIndex);   
+}
+
 void HMI::PointToRow(char* heading1,char* heading2,
                      char* heading3,char* heading4,
                      uint8_t row)
@@ -154,16 +173,10 @@ void HMI::StateFunc_MainMenu(void)
   switch(key)
   {
     case 'A':
-      if(currentRow.mainMenu > ROW2)
-      {
-        currentRow.mainMenu--;
-      }
+      currentRow.mainMenu = ROW2;
       break;
     case 'B':
-      if(currentRow.mainMenu < ROW3)
-      {
-        currentRow.mainMenu++;
-      }
+      currentRow.mainMenu = ROW3;
       break;  
     case '#':
       switch(currentRow.mainMenu)
@@ -184,7 +197,7 @@ void HMI::StateFunc_LoginMenu(void)
   char heading1[] = "  USER ID:";
   char heading2[] = "  PIN:";
   char heading3[] = "  PROCEED"; 
-  char heading4[] = "  BACK";  
+  char heading4[] = "  BACK TO MENU";  
   //LCD columns where the display of user input begins
   uint8_t idColumn = strlen(heading1);
   uint8_t pinColumn = strlen(heading2);
@@ -222,7 +235,19 @@ void HMI::StateFunc_LoginMenu(void)
           HMI::SetParam(pinColumn,ROW2,pin,counter.pin,SIZE_PIN,true);
           break;
         case ROW3:
-          ValidateLogin(id,pin);
+          userIndex = ValidateLogin(id,SIZE_ID,pin,SIZE_PIN);
+          if(userIndex != 0 && userIndex != 1 && userIndex != 2)
+          {
+            HMI::DisplayLoginError();
+            vTaskDelay(pdMS_TO_TICKS(3000));
+            HMI::ChangeStateTo(ST_MAIN_MENU);
+          }
+          else
+          {
+            HMI::DisplayLoginSuccess();
+            vTaskDelay(pdMS_TO_TICKS(3000));
+            HMI::ChangeStateTo(ST_USER_MENU1);
+          }
           break;
         case ROW4:
           HMI::ChangeStateTo(ST_MAIN_MENU);
@@ -230,6 +255,121 @@ void HMI::StateFunc_LoginMenu(void)
       }
       break;
   }                  
+}
+
+void HMI::StateFunc_UserMenu1(void)
+{
+  char heading1[] = "* UNITS:";
+  char heading2[] = "  REQUEST:";
+  char heading3[] = "  TOKEN:"; 
+  char heading4[] = "  C:<< and D:>>  1/3";
+
+  HMI::PointToRow(heading1,heading2,
+                  heading3,heading4,
+                  currentRow.userMenu1); 
+                   
+  char key = keypadPtr->GetChar();
+  switch(key)
+  {
+    case 'A':
+      currentRow.userMenu1 = ROW2;
+      break;
+    case 'B':
+      currentRow.userMenu1 = ROW3;
+      break;  
+    case 'C':
+      HMI::ChangeStateTo(ST_USER_MENU3);
+      break;
+    case 'D':
+      HMI::ChangeStateTo(ST_USER_MENU2);
+      break;
+    case '#':
+      switch(currentRow.userMenu1)
+      {
+        case ROW2:
+          break;
+        case ROW3:
+          break;
+      }
+      break;
+  }                  
+}
+
+void HMI::StateFunc_UserMenu2(void)
+{
+  char heading1[] = "* CHANGE PARAMETER";
+  char heading2[] = "  USER ID:";
+  char heading3[] = "  PIN:"; 
+  char heading4[] = "  C:<< and D:>>  2/3";
+
+  HMI::PointToRow(heading1,heading2,
+                  heading3,heading4,
+                  currentRow.userMenu2); 
+                   
+  char key = keypadPtr->GetChar();
+  switch(key)
+  {
+    case 'A':
+      currentRow.userMenu2 = ROW2;
+      break;
+    case 'B':
+      currentRow.userMenu2 = ROW3;
+      break;  
+    case 'C':
+      HMI::ChangeStateTo(ST_USER_MENU1);
+      break;
+    case 'D':
+      HMI::ChangeStateTo(ST_USER_MENU3);
+      break;
+    case '#':
+      switch(currentRow.userMenu2)
+      {
+        case ROW2:
+          break;
+        case ROW3:
+          break;
+      }
+      break;
+  }   
+}
+
+void HMI::StateFunc_UserMenu3(void)
+{
+  char heading1[] = "* CHANGE PARAMETER";
+  char heading2[] = "  PHONE:";
+  char heading3[] = "  BACK TO MENU"; 
+  char heading4[] = "  C:<< and D:>>  3/3";
+
+  HMI::PointToRow(heading1,heading2,
+                  heading3,heading4,
+                  currentRow.userMenu3); 
+                   
+  char key = keypadPtr->GetChar();
+  switch(key)
+  {
+    case 'A':
+      currentRow.userMenu3 = ROW2;
+      break;
+    case 'B':
+      currentRow.userMenu3 = ROW3;
+      break;  
+    case 'C':
+      HMI::ChangeStateTo(ST_USER_MENU2);
+      break;
+    case 'D':
+      HMI::ChangeStateTo(ST_USER_MENU1);
+      break;
+    case '#':
+      switch(currentRow.userMenu3)
+      {
+        case ROW2:
+          break;
+        case ROW3:
+          HMI::ChangeStateTo(ST_MAIN_MENU);
+          break;
+      }
+      break;
+  }   
 }
 
 HMI::HMI(LiquidCrystal_I2C* lcdPtr,Keypad* keypadPtr)
@@ -240,12 +380,16 @@ HMI::HMI(LiquidCrystal_I2C* lcdPtr,Keypad* keypadPtr)
   currentState = ST_MAIN_MENU;
   currentRow.mainMenu = ROW2;
   currentRow.loginMenu = ROW1;
+  currentRow.userMenu1 = ROW2;
+  currentRow.userMenu2 = ROW2;
+  currentRow.userMenu3 = ROW2;
   counter.id = 0;
   counter.pin = 0;
   counter.phoneNum = 0;
   memset(id,'\0',SIZE_ID);
   memset(pin,'\0',SIZE_PIN);
   memset(phoneNum,'\0',SIZE_PHONE);
+  userIndex = -1; //valid values are 0,1,and 2
 }
 
 void HMI::Start(void)
@@ -258,10 +402,19 @@ void HMI::Start(void)
     case ST_LOGIN_MENU:
       HMI::StateFunc_LoginMenu();
       break;
+    case ST_USER_MENU1:
+      HMI::StateFunc_UserMenu1();
+      break;
+    case ST_USER_MENU2:
+      HMI::StateFunc_UserMenu2();
+      break;
+    case ST_USER_MENU3:
+      HMI::StateFunc_UserMenu3();
+      break;            
   }
 }
 
-void HMI::RegisterCallback(void(*ValidateLogin)(char*,char*))
+void HMI::RegisterCallback(int(*ValidateLogin)(char*,uint8_t,char*,uint8_t))
 {
   this->ValidateLogin = ValidateLogin;
 }
