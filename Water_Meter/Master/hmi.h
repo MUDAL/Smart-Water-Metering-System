@@ -39,9 +39,12 @@ class HMI
     char pin[SIZE_PIN];
     char phoneNum[SIZE_PHONE];
     int userIndex;
+    float volume;
 
     //Function pointer(s) for callback(s)
     int(*ValidateLogin)(char*,uint8_t,char*,uint8_t); 
+    void(*GetPhoneNum)(int,char*,uint8_t);
+    void(*GetUnits)(int,float*);
     
     //Methods
     void SetParam(uint8_t col,uint8_t row,
@@ -64,5 +67,7 @@ class HMI
     HMI(LiquidCrystal_I2C* lcdPtr,Keypad* keypadPtr);
     void Start(void);
     void RegisterCallback(int(*ValidateLogin)(char*,uint8_t,char*,uint8_t));
+    void RegisterCallback(void(*GetPhoneNum)(int,char*,uint8_t));
+    void RegisterCallback(void(*GetUnits)(int,float*));
 };
 

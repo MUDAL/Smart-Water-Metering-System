@@ -19,6 +19,12 @@
 */
 
 //Type(s)
+enum UserIndex
+{
+  USER1 = 0,
+  USER2,
+  USER3
+};
 typedef struct
 {
   float volume1;
@@ -28,6 +34,7 @@ typedef struct
 
 //RTOS Handle(s)
 TaskHandle_t nodeTaskHandle;
+QueueHandle_t nodeToGetUnitsQueue;
 //Object(s)
 Preferences preferences; //for accessing ESP32 flash memory
 
@@ -35,12 +42,22 @@ void setup()
 {
   setCpuFrequencyMhz(80);
   Serial.begin(115200);
-  preferences.begin("S-Meter",false);  
+  preferences.begin("S-Meter",false); 
+  nodeToGetUnitsQueue = xQueueCreate(1,sizeof(sensor_t));
+  if(nodeToGetUnitsQueue != NULL)
+  {
+    Serial.println("Node-GetUnits Queue successfully created");
+  }
+  else
+  {
+    Serial.println("Node-GetUnits Queue failed");
+  }
   xTaskCreatePinnedToCore(ApplicationTask,"",30000,NULL,2,NULL,1);
   xTaskCreatePinnedToCore(NodeTask,"",25000,NULL,1,&nodeTaskHandle,1);
   xTaskCreatePinnedToCore(UtilityTask,"",25000,NULL,1,NULL,1);
   //preferences.putBytes("0","123A",11);
-  //preferences.putBytes("3","C24ADB",11);
+  //preferences.putBytes("3","AABB",11);
+  //preferences.putBytes("6","08155176712",12);
 }
 
 void loop() 
@@ -58,7 +75,8 @@ void ApplicationTask(void* pvParameters)
   static Keypad keypad(rowPins,columnPins); 
   static HMI hmi(&lcd,&keypad);
   hmi.RegisterCallback(ValidateLogin);
-
+  hmi.RegisterCallback(GetPhoneNum);
+  hmi.RegisterCallback(GetUnits);
   //Startup message
   lcd.init();
   lcd.backlight();
@@ -112,8 +130,8 @@ void NodeTask(void* pvParameters)
     {
       if(mni.DecodeData(MNI::RxDataId::DATA_ACK) == MNI::ACK)
       {
-        /*TO-DO: Add code to decode data from node and send to other tasks
-         * that need the data (via Queues).
+        /*TO-DO: Add code to decode data from node and send to 
+         * 'GetUnits' callback (via a Queue)
         */
       }
     }
@@ -138,6 +156,7 @@ void UtilityTask(void* pvParameters)
  * This function validates the login details of the user by comparing  
  * the ID and PIN entered via the HMI to the ID and PIN stored in the  
  * ESP32's flash.
+ * 
  * @return Index unique to each user. This index can be used by other  
  * callback functions to access details specific to a user.  
 */
@@ -164,5 +183,63 @@ int ValidateLogin(char* id,uint8_t idSize,char* pin,uint8_t pinSize)
     }
   }
   return userIndex;
+}
+
+/**
+ * @brief Callback function that gets called after the user's ID and PIN  
+ * have been validated. It gets the phone number of the user from the 
+ * ESP32's flash.
+ * 
+ * @param userIndex: To determine the user whose information is required.
+ * @param phoneNum: Buffer to store the phone number retrieved from the flash.  
+ * @param phoneNumSize: Size of the 'phoneNum' buffer.
+ * @return None
+*/
+void GetPhoneNum(int userIndex,char* phoneNum,uint8_t phoneNumSize)
+{
+  if(userIndex != USER1 && userIndex != USER2 && userIndex != USER3)
+  {
+    Serial.println("Could not get phone number");
+    return; //invalid index
+  }
+  char flashLoc[2] = {0};
+  flashLoc[0] = '6' + userIndex;
+  preferences.getBytes(flashLoc,phoneNum,phoneNumSize);
+}
+
+/**
+ * @brief Callback function that gets called when the HMI needs to display 
+ * the available units (or volume of water) for a particular user. 
+ * 
+ * @param userIndex: To determine the user whose information is required.  
+ * @param volumePtr: Points to the memory location that holds the available units  
+ * for a user based on the 'userIndex'.
+ * @return None
+*/
+void GetUnits(int userIndex,float* volumePtr)
+{
+  if(userIndex != USER1 && userIndex != USER2 && userIndex != USER3)
+  {
+    Serial.println("Could not get available units (or volume of water)");
+    return; //invalid index
+  }  
+  sensor_t sensorData = {};
+  if(xQueueReceive(nodeToGetUnitsQueue,&sensorData,0) != pdPASS)
+  {
+    return;
+  }
+  Serial.println("Node-GetUnits RX PASS");
+  switch(userIndex)
+  {
+    case USER1:
+      *volumePtr = sensorData.volume1;
+      break;
+    case USER2:
+      *volumePtr = sensorData.volume2;
+      break;
+    case USER3:
+      *volumePtr = sensorData.volume3;
+      break;
+  }
 }
 

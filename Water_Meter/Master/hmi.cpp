@@ -197,7 +197,7 @@ void HMI::StateFunc_LoginMenu(void)
   char heading1[] = "  USER ID:";
   char heading2[] = "  PIN:";
   char heading3[] = "  PROCEED"; 
-  char heading4[] = "  BACK TO MENU";  
+  char heading4[] = "  MENU";  
   //LCD columns where the display of user input begins
   uint8_t idColumn = strlen(heading1);
   uint8_t pinColumn = strlen(heading2);
@@ -236,6 +236,7 @@ void HMI::StateFunc_LoginMenu(void)
           break;
         case ROW3:
           userIndex = ValidateLogin(id,SIZE_ID,pin,SIZE_PIN);
+          GetPhoneNum(userIndex,phoneNum,SIZE_PHONE);
           if(userIndex != 0 && userIndex != 1 && userIndex != 2)
           {
             HMI::DisplayLoginError();
@@ -262,12 +263,18 @@ void HMI::StateFunc_UserMenu1(void)
   char heading1[] = "* UNITS:";
   char heading2[] = "  REQUEST:";
   char heading3[] = "  TOKEN:"; 
-  char heading4[] = "  C:<< and D:>>  1/3";
+  char heading4[] = "  C:<< D:>> 1/3";
 
   HMI::PointToRow(heading1,heading2,
                   heading3,heading4,
                   currentRow.userMenu1); 
-                   
+  //Get volume
+  GetUnits(userIndex,&volume);
+  //LCD column where the display of user input begins
+  uint8_t unitsColumn = strlen(heading1);
+  lcdPtr->setCursor(unitsColumn,ROW1);
+  lcdPtr->print(volume,2); //display units(or volume) in 2dp
+                     
   char key = keypadPtr->GetChar();
   switch(key)
   {
@@ -297,10 +304,10 @@ void HMI::StateFunc_UserMenu1(void)
 
 void HMI::StateFunc_UserMenu2(void)
 {
-  char heading1[] = "* CHANGE PARAMETER";
+  char heading1[] = "* CHANGE";
   char heading2[] = "  USER ID:";
   char heading3[] = "  PIN:"; 
-  char heading4[] = "  C:<< and D:>>  2/3";
+  char heading4[] = "  C:<< D:>> 2/3";
 
   HMI::PointToRow(heading1,heading2,
                   heading3,heading4,
@@ -335,15 +342,19 @@ void HMI::StateFunc_UserMenu2(void)
 
 void HMI::StateFunc_UserMenu3(void)
 {
-  char heading1[] = "* CHANGE PARAMETER";
+  char heading1[] = "* CHANGE";
   char heading2[] = "  PHONE:";
-  char heading3[] = "  BACK TO MENU"; 
-  char heading4[] = "  C:<< and D:>>  3/3";
+  char heading3[] = "  MENU"; 
+  char heading4[] = "  C:<< D:>> 3/3";
 
   HMI::PointToRow(heading1,heading2,
                   heading3,heading4,
                   currentRow.userMenu3); 
-                   
+  //LCD column where the display of user input begins
+  uint8_t phoneColumn = strlen(heading2);
+  lcdPtr->setCursor(phoneColumn,ROW2);
+  lcdPtr->print(phoneNum);
+  
   char key = keypadPtr->GetChar();
   switch(key)
   {
@@ -390,6 +401,7 @@ HMI::HMI(LiquidCrystal_I2C* lcdPtr,Keypad* keypadPtr)
   memset(pin,'\0',SIZE_PIN);
   memset(phoneNum,'\0',SIZE_PHONE);
   userIndex = -1; //valid values are 0,1,and 2
+  volume = 0;
 }
 
 void HMI::Start(void)
@@ -416,6 +428,19 @@ void HMI::Start(void)
 
 void HMI::RegisterCallback(int(*ValidateLogin)(char*,uint8_t,char*,uint8_t))
 {
+  Serial.println("Registered {ValidateLogin} callback");
   this->ValidateLogin = ValidateLogin;
+}
+
+void HMI::RegisterCallback(void(*GetPhoneNum)(int,char*,uint8_t))
+{
+  Serial.println("Registered {GetPhoneNum} callback");
+  this->GetPhoneNum = GetPhoneNum;
+}
+
+void HMI::RegisterCallback(void(*GetUnits)(int,float*))
+{
+  Serial.println("Registered {GetUnits} callback");
+  this->GetUnits = GetUnits;  
 }
 
