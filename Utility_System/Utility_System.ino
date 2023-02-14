@@ -58,7 +58,7 @@ void WiFiManagementTask(void* pvParameters)
   wm.setSaveParamsCallback(WiFiManagerCallback);   
   //Auto-connect to previous network if available.
   //If connection fails, ESP32 goes from being a station to being an access point.
-  Serial.print(wm.autoConnect("TRANSFORMER")); 
+  Serial.print(wm.autoConnect("UTILITY")); 
   Serial.println("-->WiFi status");   
   bool accessPointMode = false;
   uint32_t startTime = 0;    
@@ -72,7 +72,7 @@ void WiFiManagementTask(void* pvParameters)
       {
         if(!wm.getConfigPortalActive())
         {
-          wm.autoConnect("TRANSFORMER"); 
+          wm.autoConnect("UTILITY"); 
         }
         accessPointMode = true; 
         startTime = millis(); 
