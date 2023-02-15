@@ -7,7 +7,7 @@
 class MNI
 {
   private:
-    enum BufferSize {TX = 16, RX = 4};
+    enum BufferSize {TX = 16, RX = 16};
     SoftwareSerial* port;
     uint8_t rxDataCounter;
     uint8_t txBuffer[BufferSize::TX];
@@ -22,7 +22,13 @@ class MNI
       USER2_VOLUME = 8,
       USER3_VOLUME = 12
     };
-    enum RxDataId {DATA_QUERY = 0};
+    enum RxDataId 
+    {
+      DATA_QUERY = 0, 
+      USER1_RECHARGE = 4,
+      USER2_RECHARGE = 8,
+      USER3_RECHARGE = 12
+    };
     
     MNI(SoftwareSerial* serial,uint32_t baudRate = 9600);
     void EncodeData(uint32_t dataToEncode,TxDataId id);

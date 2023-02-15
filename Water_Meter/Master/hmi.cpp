@@ -71,6 +71,7 @@ void HMI::DisplayInstructions(void)
   //Simple FSM to change info to be displayed
   const uint8_t displayState1 = 0;
   const uint8_t displayState2 = 1;
+  const uint8_t displayState3 = 2;
   uint8_t displayState = displayState1;
   uint32_t prevTime = millis();  
   lcdPtr->clear();
@@ -88,14 +89,14 @@ void HMI::DisplayInstructions(void)
     {
       case displayState1:
         lcdPtr->setCursor(7,0);
-        lcdPtr->print("<1/2>");
+        lcdPtr->print("<1/3>");
         lcdPtr->setCursor(0,1);
         lcdPtr->print("- Log in with your");
         lcdPtr->setCursor(0,2);
         lcdPtr->print("user ID and PIN. ");
         lcdPtr->setCursor(0,3);
         lcdPtr->print("Check your profile.");
-        if((millis() - prevTime) >= 4000)
+        if((millis() - prevTime) >= 5000)
         {
           displayState = displayState2;
           prevTime = millis();
@@ -105,9 +106,31 @@ void HMI::DisplayInstructions(void)
         
       case displayState2:
         lcdPtr->setCursor(7,0);
-        lcdPtr->print("<2/2>");
-        /*TO-DO: Add code to explain recharging process*/
-        if((millis() - prevTime) >= 4000)
+        lcdPtr->print("<2/3>");
+        lcdPtr->setCursor(0,1);
+        lcdPtr->print("Recharge request, ");
+        lcdPtr->setCursor(0,2);
+        lcdPtr->print("Format: *L* e.g.");  
+        lcdPtr->setCursor(0,3);
+        lcdPtr->print("*25* for 25 litres");      
+        if((millis() - prevTime) >= 5000)
+        {
+          displayState = displayState3;
+          prevTime = millis();
+          lcdPtr->clear();
+        }
+        break;
+
+      case displayState3:
+        lcdPtr->setCursor(7,0);
+        lcdPtr->print("<3/3>");
+        lcdPtr->setCursor(0,1);
+        lcdPtr->print("After the request,");
+        lcdPtr->setCursor(0,2);
+        lcdPtr->print("You will get an SMS");
+        lcdPtr->setCursor(0,3);
+        lcdPtr->print("Enter the token.");
+        if((millis() - prevTime) >= 5000)
         {
           lcdPtr->clear();
           return;

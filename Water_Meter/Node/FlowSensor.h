@@ -5,10 +5,10 @@ class FlowSensor
   private:
     uint8_t pin;
     bool isPrevHigh;
-    float volume;
+    float volume; //in mL
     
   public:
     FlowSensor(uint8_t pin);
-    void UpdateVolume(int volume);
+    void UpdateVolume(uint32_t volume);
     float GetVolume(void);
 };

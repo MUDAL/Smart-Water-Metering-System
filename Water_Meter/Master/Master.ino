@@ -130,11 +130,10 @@ void NodeTask(void* pvParameters)
     {
       if(mni.DecodeData(MNI::RxDataId::DATA_ACK) == MNI::ACK)
       {
-        //Divide received data by 100 to get volume in mL
         Serial.println("--Received serial data from node\n");
-        sensorData.volume1 = mni.DecodeData(MNI::RxDataId::USER1_VOLUME) / 100.0;
-        sensorData.volume2 = mni.DecodeData(MNI::RxDataId::USER2_VOLUME) / 100.0;
-        sensorData.volume3 = mni.DecodeData(MNI::RxDataId::USER3_VOLUME) / 100.0;
+        sensorData.volume1 = mni.DecodeData(MNI::RxDataId::USER1_VOLUME);
+        sensorData.volume2 = mni.DecodeData(MNI::RxDataId::USER2_VOLUME);
+        sensorData.volume3 = mni.DecodeData(MNI::RxDataId::USER3_VOLUME);
         //Debug
         Serial.print("User1 volume: ");
         Serial.println(sensorData.volume1); 

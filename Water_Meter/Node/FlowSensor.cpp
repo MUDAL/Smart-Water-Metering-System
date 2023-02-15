@@ -9,7 +9,7 @@ FlowSensor::FlowSensor(uint8_t pin)
   pinMode(this->pin,INPUT);
 }
 
-void FlowSensor::UpdateVolume(int volume)
+void FlowSensor::UpdateVolume(uint32_t volume)
 {
   this->volume += volume;
 }

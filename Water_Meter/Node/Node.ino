@@ -61,6 +61,13 @@ void loop()
   {
     if(mni.DecodeData(MNI::RxDataId::DATA_QUERY) == MNI::QUERY)
     {
+      uint32_t user1Recharge = mni.DecodeData(MNI::RxDataId::USER1_RECHARGE);
+      uint32_t user2Recharge = mni.DecodeData(MNI::RxDataId::USER2_RECHARGE);
+      uint32_t user3Recharge = mni.DecodeData(MNI::RxDataId::USER3_RECHARGE);
+      flowSensor1.UpdateVolume(user1Recharge);
+      flowSensor2.UpdateVolume(user2Recharge);
+      flowSensor3.UpdateVolume(user3Recharge);
+      
       //Debug
       Serial.print("volume 1: ");
       Serial.println(volume1);   
@@ -68,14 +75,11 @@ void loop()
       Serial.println(volume2); 
       Serial.print("volume 3: ");
       Serial.println(volume3); 
-      /*
-       * Encode each volume data with a factor of 100 (the master should divide 
-       * the encoded data by 100 in order to get the volume in mL.
-      */
+      
       mni.EncodeData(MNI::ACK,MNI::TxDataId::DATA_ACK);
-      mni.EncodeData(volume1*100,MNI::TxDataId::USER1_VOLUME);
-      mni.EncodeData(volume2*100,MNI::TxDataId::USER2_VOLUME);
-      mni.EncodeData(volume3*100,MNI::TxDataId::USER3_VOLUME);
+      mni.EncodeData(lround(volume1),MNI::TxDataId::USER1_VOLUME);
+      mni.EncodeData(lround(volume2),MNI::TxDataId::USER2_VOLUME);
+      mni.EncodeData(lround(volume3),MNI::TxDataId::USER3_VOLUME);
       mni.TransmitData();
     }
   }
