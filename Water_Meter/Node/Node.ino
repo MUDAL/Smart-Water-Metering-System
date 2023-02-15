@@ -11,7 +11,7 @@
  * a power outage occurs.  
  * 
  * NB: When water flows through the flow sensors, they generate pulses. The sensors 
- * output roughly 486 pulses per litre. For every pulse detected, 2.1mL of water must 
+ * output roughly 482 pulses per litre. For every pulse detected, 2.1mL of water must 
  * have flown through the sensor.
 */
 
@@ -38,12 +38,12 @@ volatile float volume3;
 
 /**
  * @brief Initialize hardware timer 1.
- * Enable interrupt with 1ms repetition rate
+ * Enable periodic interrupt
 */
 void TimerInit(void)
 {
   TCCR1B = (1<<WGM12)|(1<<CS11)|(1<<CS10); //CTC mode, prescalar = 64
-  OCR1A = 249; //1ms repetition rate (250 cycles)
+  OCR1A = 149; //0.6ms repetition rate 
   sei();//enable global interrupt
   TIMSK1 = (1<<OCIE1A); //enable timer 1 compare match A interrupt   
 }
