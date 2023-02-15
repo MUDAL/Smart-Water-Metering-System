@@ -27,10 +27,10 @@ enum UserIndex
 };
 typedef struct
 {
-  float volume1;
-  float volume2;
-  float volume3;  
-}sensor_t;
+  uint32_t volume1;
+  uint32_t volume2;
+  uint32_t volume3;  
+}sensor_t; //Volumes (in centi-litres)
 
 //RTOS Handle(s)
 TaskHandle_t nodeTaskHandle;
@@ -130,9 +130,26 @@ void NodeTask(void* pvParameters)
     {
       if(mni.DecodeData(MNI::RxDataId::DATA_ACK) == MNI::ACK)
       {
-        /*TO-DO: Add code to decode data from node and send to 
-         * 'GetUnits' callback (via a Queue)
-        */
+        Serial.println("--Received serial data from node\n");
+        sensorData.volume1 = mni.DecodeData(MNI::RxDataId::USER1_VOLUME);
+        sensorData.volume2 = mni.DecodeData(MNI::RxDataId::USER2_VOLUME);
+        sensorData.volume3 = mni.DecodeData(MNI::RxDataId::USER3_VOLUME);
+        //Debug
+        Serial.print("User1 volume: ");
+        Serial.println(sensorData.volume1); 
+        Serial.print("User2 volume: ");
+        Serial.println(sensorData.volume2); 
+        Serial.print("User3 volume: ");
+        Serial.println(sensorData.volume3);
+        //Place sensor data in the Node-GetUnits Queue
+        if(xQueueSend(nodeToGetUnitsQueue,&sensorData,0) == pdPASS)
+        {
+          Serial.println("--Data successfully sent to 'GetUnits' callback\n");
+        }
+        else
+        {
+          Serial.println("--Failed to send data to 'GetUnits' callback\n");
+        }
       }
     }
   }
@@ -216,7 +233,7 @@ void GetPhoneNum(int userIndex,char* phoneNum,uint8_t phoneNumSize)
  * for a user based on the 'userIndex'.
  * @return None
 */
-void GetUnits(int userIndex,float* volumePtr)
+void GetUnits(int userIndex,int* volumePtr)
 {
   if(userIndex != USER1 && userIndex != USER2 && userIndex != USER3)
   {

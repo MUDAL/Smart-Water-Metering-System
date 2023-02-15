@@ -5,6 +5,7 @@ Master [ESP32]:
 4. Master-Node Interface (Serial2 RX: 16, Serial2 TX: 17)
 
 Node [Arduino Nano]:
-1. SD card module
-2. Flow sensors
-3. Solenoid valves
+1. Master-Node Interface: (Software Serial RX: 6, TX: 7)
+2. SD card module
+3. Flow sensors (Pins 3,4, and 5)
+4. Solenoid valves
