@@ -273,7 +273,7 @@ void HMI::StateFunc_UserMenu1(void)
   //LCD column where the display of user input begins
   uint8_t unitsColumn = strlen(heading1);
   lcdPtr->setCursor(unitsColumn,ROW1);
-  lcdPtr->print((volume / 100.0),2); //display units(or volume in litres) in 2dp
+  lcdPtr->print((volume / 1000.0),2); //display units(or volume in litres) in 2dp
   lcdPtr->print("L    "); //some spaces (4) to clear possible leftovers from previous display
                      
   char key = keypadPtr->GetChar();
@@ -439,7 +439,7 @@ void HMI::RegisterCallback(void(*GetPhoneNum)(int,char*,uint8_t))
   this->GetPhoneNum = GetPhoneNum;
 }
 
-void HMI::RegisterCallback(void(*GetUnits)(int,int*))
+void HMI::RegisterCallback(void(*GetUnits)(int,float*))
 {
   Serial.println("Registered {GetUnits} callback");
   this->GetUnits = GetUnits;  

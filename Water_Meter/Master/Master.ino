@@ -27,10 +27,10 @@ enum UserIndex
 };
 typedef struct
 {
-  uint32_t volume1;
-  uint32_t volume2;
-  uint32_t volume3;  
-}sensor_t; //Volumes (in centi-litres)
+  float volume1;
+  float volume2;
+  float volume3;  
+}sensor_t; 
 
 //RTOS Handle(s)
 TaskHandle_t nodeTaskHandle;
@@ -130,10 +130,11 @@ void NodeTask(void* pvParameters)
     {
       if(mni.DecodeData(MNI::RxDataId::DATA_ACK) == MNI::ACK)
       {
+        //Divide received data by 100 to get volume in mL
         Serial.println("--Received serial data from node\n");
-        sensorData.volume1 = mni.DecodeData(MNI::RxDataId::USER1_VOLUME);
-        sensorData.volume2 = mni.DecodeData(MNI::RxDataId::USER2_VOLUME);
-        sensorData.volume3 = mni.DecodeData(MNI::RxDataId::USER3_VOLUME);
+        sensorData.volume1 = mni.DecodeData(MNI::RxDataId::USER1_VOLUME) / 100.0;
+        sensorData.volume2 = mni.DecodeData(MNI::RxDataId::USER2_VOLUME) / 100.0;
+        sensorData.volume3 = mni.DecodeData(MNI::RxDataId::USER3_VOLUME) / 100.0;
         //Debug
         Serial.print("User1 volume: ");
         Serial.println(sensorData.volume1); 
@@ -233,7 +234,7 @@ void GetPhoneNum(int userIndex,char* phoneNum,uint8_t phoneNumSize)
  * for a user based on the 'userIndex'.
  * @return None
 */
-void GetUnits(int userIndex,int* volumePtr)
+void GetUnits(int userIndex,float* volumePtr)
 {
   if(userIndex != USER1 && userIndex != USER2 && userIndex != USER3)
   {

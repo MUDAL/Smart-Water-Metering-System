@@ -14,12 +14,12 @@ void FlowSensor::UpdateVolume(int volume)
   this->volume += volume;
 }
 
-int FlowSensor::GetVolume(void)
+float FlowSensor::GetVolume(void)
 {
-  //Deduct 21cL if a pulse is detected
+  //Deduct 2.1mL if a pulse is detected
   if(digitalRead(pin) && !isPrevHigh)
   {
-    volume = volume - 21;
+    volume = volume - 2.1;
     if(volume < 0)
     {
       volume = 0;
