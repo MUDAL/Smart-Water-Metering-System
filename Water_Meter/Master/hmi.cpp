@@ -66,6 +66,42 @@ void HMI::SetParam(uint8_t col,uint8_t row,
   }
 }
 
+void HMI::DisplayHelpPage1(void)
+{
+  lcdPtr->setCursor(7,0);
+  lcdPtr->print("<1/3>");
+  lcdPtr->setCursor(0,1);
+  lcdPtr->print("- Log in with your");
+  lcdPtr->setCursor(0,2);
+  lcdPtr->print("user ID and PIN. ");
+  lcdPtr->setCursor(0,3);
+  lcdPtr->print("Check your profile.");  
+}
+
+void HMI::DisplayHelpPage2(void)
+{
+  lcdPtr->setCursor(7,0);
+  lcdPtr->print("<2/3>");
+  lcdPtr->setCursor(0,1);
+  lcdPtr->print("- Recharge request,");
+  lcdPtr->setCursor(0,2);
+  lcdPtr->print("Format: *Litre* e.g.");  
+  lcdPtr->setCursor(0,3);
+  lcdPtr->print("*25* for 25 litres");   
+}
+
+void HMI::DisplayHelpPage3(void)
+{
+  lcdPtr->setCursor(7,0);
+  lcdPtr->print("<3/3>");
+  lcdPtr->setCursor(0,1);
+  lcdPtr->print("- After the request,");
+  lcdPtr->setCursor(0,2);
+  lcdPtr->print("you will get an SMS.");
+  lcdPtr->setCursor(0,3);
+  lcdPtr->print("Enter the token.");  
+}
+
 void HMI::DisplayInstructions(void)
 {
   //Simple FSM to change info to be displayed
@@ -88,14 +124,7 @@ void HMI::DisplayInstructions(void)
     switch(displayState)
     {
       case displayState1:
-        lcdPtr->setCursor(7,0);
-        lcdPtr->print("<1/3>");
-        lcdPtr->setCursor(0,1);
-        lcdPtr->print("- Log in with your");
-        lcdPtr->setCursor(0,2);
-        lcdPtr->print("user ID and PIN. ");
-        lcdPtr->setCursor(0,3);
-        lcdPtr->print("Check your profile.");
+        HMI::DisplayHelpPage1();
         if((millis() - prevTime) >= 5000)
         {
           displayState = displayState2;
@@ -105,14 +134,7 @@ void HMI::DisplayInstructions(void)
         break;
         
       case displayState2:
-        lcdPtr->setCursor(7,0);
-        lcdPtr->print("<2/3>");
-        lcdPtr->setCursor(0,1);
-        lcdPtr->print("Recharge request, ");
-        lcdPtr->setCursor(0,2);
-        lcdPtr->print("Format: *L* e.g.");  
-        lcdPtr->setCursor(0,3);
-        lcdPtr->print("*25* for 25 litres");      
+        HMI::DisplayHelpPage2();
         if((millis() - prevTime) >= 5000)
         {
           displayState = displayState3;
@@ -122,14 +144,7 @@ void HMI::DisplayInstructions(void)
         break;
 
       case displayState3:
-        lcdPtr->setCursor(7,0);
-        lcdPtr->print("<3/3>");
-        lcdPtr->setCursor(0,1);
-        lcdPtr->print("After the request,");
-        lcdPtr->setCursor(0,2);
-        lcdPtr->print("You will get an SMS");
-        lcdPtr->setCursor(0,3);
-        lcdPtr->print("Enter the token.");
+        HMI::DisplayHelpPage3();
         if((millis() - prevTime) >= 5000)
         {
           lcdPtr->clear();

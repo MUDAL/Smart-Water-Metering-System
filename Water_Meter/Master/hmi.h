@@ -50,6 +50,9 @@ class HMI
     void SetParam(uint8_t col,uint8_t row,
                   char* param,uint8_t& counterRef,
                   uint8_t paramSize,bool isHidden = false);
+    void DisplayHelpPage1(void);
+    void DisplayHelpPage2(void);
+    void DisplayHelpPage3(void);
     void DisplayInstructions(void);
     void DisplayLoginError(void);
     void DisplayLoginSuccess(void);
