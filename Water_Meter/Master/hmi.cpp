@@ -303,7 +303,7 @@ void HMI::StateFunc_LoginMenu(void)
 
 void HMI::StateFunc_UserMenu1(void)
 {
-  char heading1[] = "* UNITS:";
+  char heading1[] = "  UNITS:";
   char heading2[] = "  REQUEST:";
   char heading3[] = "  TOKEN:"; 
   char heading4[] = "";
@@ -311,10 +311,8 @@ void HMI::StateFunc_UserMenu1(void)
   HMI::PointToRow(heading1,heading2,
                   heading3,heading4,
                   currentRow.userMenu1); 
-  //Display 4th row
-  HMI::DisplayPageNumber(3,1,3);
-  //Get volume
-  GetUnits(userIndex,&volume);
+  HMI::DisplayPageNumber(3,1,3); //Display 4th row
+  GetUnits(userIndex,&volume); //Get volume
   //LCD column where the display of user input begins
   uint8_t unitsColumn = strlen(heading1);
   lcdPtr->setCursor(unitsColumn,ROW1);
@@ -347,7 +345,7 @@ void HMI::StateFunc_UserMenu1(void)
 
 void HMI::StateFunc_UserMenu2(void)
 {
-  char heading1[] = "* CHANGE";
+  char heading1[] = "****** CHANGE ******";
   char heading2[] = "  USER ID:";
   char heading3[] = "  PIN:"; 
   char heading4[] = "";
@@ -355,8 +353,7 @@ void HMI::StateFunc_UserMenu2(void)
   HMI::PointToRow(heading1,heading2,
                   heading3,heading4,
                   currentRow.userMenu2); 
-  //Display 4th row
-  HMI::DisplayPageNumber(3,2,3);
+  HMI::DisplayPageNumber(3,2,3); //Display 4th row
   
   char key = keypadPtr->GetChar();
   switch(key)
@@ -387,7 +384,7 @@ void HMI::StateFunc_UserMenu2(void)
 
 void HMI::StateFunc_UserMenu3(void)
 {
-  char heading1[] = "* CHANGE";
+  char heading1[] = "****** CHANGE ******";
   char heading2[] = "  PHONE:";
   char heading3[] = "  MENU"; 
   char heading4[] = "";
@@ -395,8 +392,7 @@ void HMI::StateFunc_UserMenu3(void)
   HMI::PointToRow(heading1,heading2,
                   heading3,heading4,
                   currentRow.userMenu3); 
-  //Display 4th row
-  HMI::DisplayPageNumber(3,3,3);
+  HMI::DisplayPageNumber(3,3,3); //Display 4th row
   //LCD column where the display of user input begins
   uint8_t phoneColumn = strlen(heading2);
   lcdPtr->setCursor(phoneColumn,ROW2);
