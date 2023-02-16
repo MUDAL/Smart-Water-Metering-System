@@ -19,12 +19,6 @@
 */
 
 //Type(s)
-enum UserIndex
-{
-  USER1 = 0,
-  USER2,
-  USER3
-};
 typedef struct
 {
   float volume1;
@@ -177,10 +171,11 @@ void UtilityTask(void* pvParameters)
  * @return Index unique to each user. This index can be used by other  
  * callback functions to access details specific to a user.  
 */
-int ValidateLogin(char* id,uint8_t idSize,char* pin,uint8_t pinSize)
-{
-  int userIndex = -1;     
+UserIndex ValidateLogin(char* id,uint8_t idSize,char* pin,uint8_t pinSize)
+{     
   const uint8_t numOfUsers = 3;
+  const UserIndex indexArray[numOfUsers] = {USER1,USER2,USER3};
+  UserIndex userIndex = USER_UNKNOWN;
   for(uint8_t i = 0; i < numOfUsers; i++)
   { 
     char idFlash[idSize] = {0};
@@ -195,7 +190,7 @@ int ValidateLogin(char* id,uint8_t idSize,char* pin,uint8_t pinSize)
       Serial.println("SUCCESS");
       Serial.print("Details found at index: ");
       Serial.println(i);
-      userIndex = i;
+      userIndex = indexArray[i];
       break;
     }
   }
@@ -212,9 +207,9 @@ int ValidateLogin(char* id,uint8_t idSize,char* pin,uint8_t pinSize)
  * @param phoneNumSize: Size of the 'phoneNum' buffer.
  * @return None
 */
-void GetPhoneNum(int userIndex,char* phoneNum,uint8_t phoneNumSize)
+void GetPhoneNum(UserIndex userIndex,char* phoneNum,uint8_t phoneNumSize)
 {
-  if(userIndex != USER1 && userIndex != USER2 && userIndex != USER3)
+  if(userIndex == USER_UNKNOWN)
   {
     Serial.println("Could not get phone number");
     return; //invalid index
@@ -233,9 +228,9 @@ void GetPhoneNum(int userIndex,char* phoneNum,uint8_t phoneNumSize)
  * for a user based on the 'userIndex'.
  * @return None
 */
-void GetUnits(int userIndex,float* volumePtr)
+void GetUnits(UserIndex userIndex,float* volumePtr)
 {
-  if(userIndex != USER1 && userIndex != USER2 && userIndex != USER3)
+  if(userIndex == USER_UNKNOWN)
   {
     Serial.println("Could not get available units (or volume of water)");
     return; //invalid index

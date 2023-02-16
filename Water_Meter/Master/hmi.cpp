@@ -66,10 +66,21 @@ void HMI::SetParam(uint8_t col,uint8_t row,
   }
 }
 
+void HMI::DisplayPageNumber(uint8_t row,uint8_t currentPage,uint8_t lastPage)
+{
+  lcdPtr->setCursor(0,row);
+  lcdPtr->print("C:<<");
+  lcdPtr->setCursor(7,row);
+  lcdPtr->print(currentPage);
+  lcdPtr->print('/');
+  lcdPtr->print(lastPage);
+  lcdPtr->setCursor(16,row);
+  lcdPtr->print("D:>>");  
+}
+
 void HMI::DisplayHelpPage1(void)
 {
-  lcdPtr->setCursor(7,0);
-  lcdPtr->print("<1/3>");
+  HMI::DisplayPageNumber(0,1,3);
   lcdPtr->setCursor(0,1);
   lcdPtr->print("- Log in with your");
   lcdPtr->setCursor(0,2);
@@ -80,8 +91,7 @@ void HMI::DisplayHelpPage1(void)
 
 void HMI::DisplayHelpPage2(void)
 {
-  lcdPtr->setCursor(7,0);
-  lcdPtr->print("<2/3>");
+  HMI::DisplayPageNumber(0,2,3);
   lcdPtr->setCursor(0,1);
   lcdPtr->print("- Recharge request,");
   lcdPtr->setCursor(0,2);
@@ -92,8 +102,7 @@ void HMI::DisplayHelpPage2(void)
 
 void HMI::DisplayHelpPage3(void)
 {
-  lcdPtr->setCursor(7,0);
-  lcdPtr->print("<3/3>");
+  HMI::DisplayPageNumber(0,3,3);
   lcdPtr->setCursor(0,1);
   lcdPtr->print("- After the request,");
   lcdPtr->setCursor(0,2);
@@ -108,48 +117,44 @@ void HMI::DisplayInstructions(void)
   const uint8_t displayState1 = 0;
   const uint8_t displayState2 = 1;
   const uint8_t displayState3 = 2;
-  uint8_t displayState = displayState1;
-  uint32_t prevTime = millis();  
+  uint8_t displayState = displayState1; 
   lcdPtr->clear();
     
   while(1)
   {
     char key = keypadPtr->GetChar();
-    if(key == '#')
+    switch(key)
     {
-      lcdPtr->clear();
-      break;
+      case '#':
+        lcdPtr->clear();
+        return;
+      case 'C':
+        if(displayState > displayState1)
+        {
+          lcdPtr->clear();
+          displayState--;
+        }
+        break;
+      case 'D':
+        if(displayState < displayState3)
+        {
+          lcdPtr->clear();
+          displayState++;
+        }
+        break;
     }
-    //FSM
+    
     switch(displayState)
     {
       case displayState1:
         HMI::DisplayHelpPage1();
-        if((millis() - prevTime) >= 5000)
-        {
-          displayState = displayState2;
-          prevTime = millis();
-          lcdPtr->clear();
-        }
         break;
-        
       case displayState2:
         HMI::DisplayHelpPage2();
-        if((millis() - prevTime) >= 5000)
-        {
-          displayState = displayState3;
-          prevTime = millis();
-          lcdPtr->clear();
-        }
         break;
-
       case displayState3:
         HMI::DisplayHelpPage3();
-        if((millis() - prevTime) >= 5000)
-        {
-          lcdPtr->clear();
-          return;
-        }
+        break;
     }
   }
 }
@@ -275,7 +280,7 @@ void HMI::StateFunc_LoginMenu(void)
         case ROW3:
           userIndex = ValidateLogin(id,SIZE_ID,pin,SIZE_PIN);
           GetPhoneNum(userIndex,phoneNum,SIZE_PHONE);
-          if(userIndex != 0 && userIndex != 1 && userIndex != 2)
+          if(userIndex == USER_UNKNOWN)
           {
             HMI::DisplayLoginError();
             vTaskDelay(pdMS_TO_TICKS(3000));
@@ -301,11 +306,13 @@ void HMI::StateFunc_UserMenu1(void)
   char heading1[] = "* UNITS:";
   char heading2[] = "  REQUEST:";
   char heading3[] = "  TOKEN:"; 
-  char heading4[] = "  C:<< D:>> 1/3";
+  char heading4[] = "";
 
   HMI::PointToRow(heading1,heading2,
                   heading3,heading4,
                   currentRow.userMenu1); 
+  //Display 4th row
+  HMI::DisplayPageNumber(3,1,3);
   //Get volume
   GetUnits(userIndex,&volume);
   //LCD column where the display of user input begins
@@ -323,9 +330,6 @@ void HMI::StateFunc_UserMenu1(void)
     case 'B':
       currentRow.userMenu1 = ROW3;
       break;  
-    case 'C':
-      HMI::ChangeStateTo(ST_USER_MENU3);
-      break;
     case 'D':
       HMI::ChangeStateTo(ST_USER_MENU2);
       break;
@@ -346,12 +350,14 @@ void HMI::StateFunc_UserMenu2(void)
   char heading1[] = "* CHANGE";
   char heading2[] = "  USER ID:";
   char heading3[] = "  PIN:"; 
-  char heading4[] = "  C:<< D:>> 2/3";
+  char heading4[] = "";
 
   HMI::PointToRow(heading1,heading2,
                   heading3,heading4,
                   currentRow.userMenu2); 
-                   
+  //Display 4th row
+  HMI::DisplayPageNumber(3,2,3);
+  
   char key = keypadPtr->GetChar();
   switch(key)
   {
@@ -384,11 +390,13 @@ void HMI::StateFunc_UserMenu3(void)
   char heading1[] = "* CHANGE";
   char heading2[] = "  PHONE:";
   char heading3[] = "  MENU"; 
-  char heading4[] = "  C:<< D:>> 3/3";
+  char heading4[] = "";
 
   HMI::PointToRow(heading1,heading2,
                   heading3,heading4,
                   currentRow.userMenu3); 
+  //Display 4th row
+  HMI::DisplayPageNumber(3,3,3);
   //LCD column where the display of user input begins
   uint8_t phoneColumn = strlen(heading2);
   lcdPtr->setCursor(phoneColumn,ROW2);
@@ -405,9 +413,6 @@ void HMI::StateFunc_UserMenu3(void)
       break;  
     case 'C':
       HMI::ChangeStateTo(ST_USER_MENU2);
-      break;
-    case 'D':
-      HMI::ChangeStateTo(ST_USER_MENU1);
       break;
     case '#':
       switch(currentRow.userMenu3)
@@ -439,7 +444,7 @@ HMI::HMI(LiquidCrystal_I2C* lcdPtr,Keypad* keypadPtr)
   memset(id,'\0',SIZE_ID);
   memset(pin,'\0',SIZE_PIN);
   memset(phoneNum,'\0',SIZE_PHONE);
-  userIndex = -1; //valid values are 0,1,and 2
+  userIndex = USER_UNKNOWN; 
   volume = 0;
 }
 
@@ -465,19 +470,19 @@ void HMI::Start(void)
   }
 }
 
-void HMI::RegisterCallback(int(*ValidateLogin)(char*,uint8_t,char*,uint8_t))
+void HMI::RegisterCallback(UserIndex(*ValidateLogin)(char*,uint8_t,char*,uint8_t))
 {
   Serial.println("Registered {ValidateLogin} callback");
   this->ValidateLogin = ValidateLogin;
 }
 
-void HMI::RegisterCallback(void(*GetPhoneNum)(int,char*,uint8_t))
+void HMI::RegisterCallback(void(*GetPhoneNum)(UserIndex,char*,uint8_t))
 {
   Serial.println("Registered {GetPhoneNum} callback");
   this->GetPhoneNum = GetPhoneNum;
 }
 
-void HMI::RegisterCallback(void(*GetUnits)(int,float*))
+void HMI::RegisterCallback(void(*GetUnits)(UserIndex,float*))
 {
   Serial.println("Registered {GetUnits} callback");
   this->GetUnits = GetUnits;  

@@ -1,5 +1,13 @@
 #pragma once   
 
+enum UserIndex
+{
+  USER1 = 0,
+  USER2,
+  USER3,
+  USER_UNKNOWN
+};
+
 class HMI
 {
   private:
@@ -38,18 +46,19 @@ class HMI
     char id[SIZE_ID];
     char pin[SIZE_PIN];
     char phoneNum[SIZE_PHONE];
-    int userIndex;
+    UserIndex userIndex;
     float volume;
 
     //Function pointer(s) for callback(s)
-    int(*ValidateLogin)(char*,uint8_t,char*,uint8_t); 
-    void(*GetPhoneNum)(int,char*,uint8_t);
-    void(*GetUnits)(int,float*);
+    UserIndex(*ValidateLogin)(char*,uint8_t,char*,uint8_t); 
+    void(*GetPhoneNum)(UserIndex,char*,uint8_t);
+    void(*GetUnits)(UserIndex,float*);
     
     //Methods
     void SetParam(uint8_t col,uint8_t row,
                   char* param,uint8_t& counterRef,
                   uint8_t paramSize,bool isHidden = false);
+    void DisplayPageNumber(uint8_t row,uint8_t currentPage,uint8_t lastPage);
     void DisplayHelpPage1(void);
     void DisplayHelpPage2(void);
     void DisplayHelpPage3(void);
@@ -69,8 +78,8 @@ class HMI
   public:
     HMI(LiquidCrystal_I2C* lcdPtr,Keypad* keypadPtr);
     void Start(void);
-    void RegisterCallback(int(*ValidateLogin)(char*,uint8_t,char*,uint8_t));
-    void RegisterCallback(void(*GetPhoneNum)(int,char*,uint8_t));
-    void RegisterCallback(void(*GetUnits)(int,float*));
+    void RegisterCallback(UserIndex(*ValidateLogin)(char*,uint8_t,char*,uint8_t));
+    void RegisterCallback(void(*GetPhoneNum)(UserIndex,char*,uint8_t));
+    void RegisterCallback(void(*GetUnits)(UserIndex,float*));
 };
 
