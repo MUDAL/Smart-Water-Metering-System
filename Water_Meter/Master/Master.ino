@@ -71,6 +71,7 @@ void ApplicationTask(void* pvParameters)
   hmi.RegisterCallback(ValidateLogin);
   hmi.RegisterCallback(GetPhoneNum);
   hmi.RegisterCallback(GetUnits);
+  hmi.RegisterCallback(StoreUserParam);
   //Startup message
   lcd.init();
   lcd.backlight();
@@ -253,5 +254,47 @@ void GetUnits(UserIndex userIndex,float* volumePtr)
       *volumePtr = sensorData.volume3;
       break;
   }
+}
+
+/**
+ * @brief Callback function stores the new value of a parameter 
+ * (ID, PIN, or Phone number) in the ESP32's flash. It is called when 
+ * the user uses the HMI to save the parameter.
+ * 
+ * @param userIndex: To determine the user whose information is required.  
+ * @param paramType: Type of the parameter to be stored.  
+ * @param param: Buffer containing the new value of the parameter to be stored. 
+ * @param paramSize: Size of the 'param' buffer.
+ * @return true if parameter was successfully stored.
+ *         false if parameter was not stored (occurs if new parameter is same as the old one).
+*/
+bool StoreUserParam(UserIndex userIndex,UserParam paramType,
+                    char* param,uint8_t paramSize)
+{
+  bool isParamStored = false;
+  char paramFlash[paramSize]; //to hold previous value of 'param' stored in flash.
+  char flashLoc[2] = {0};
+  uint8_t index = (uint8_t)userIndex;
+  
+  switch(paramType)
+  {
+    case ID:
+      flashLoc[0] = '0' + index;
+      break;
+    case PIN:
+      flashLoc[0] = '3' + index;
+      break;
+    case PHONE:
+      flashLoc[0] = '6' + index;
+      break;
+  }
+  preferences.getBytes(flashLoc,paramFlash,paramSize); 
+  if(strcmp(param,paramFlash))
+  {
+    preferences.putBytes(flashLoc,param,paramSize);
+    Serial.println("Stored parameter in Flash");
+    isParamStored = true;
+  }
+  return isParamStored;
 }
 

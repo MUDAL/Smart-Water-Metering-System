@@ -23,6 +23,8 @@ void HMI::SetParam(uint8_t col,uint8_t row,
                    char* param,uint8_t& counterRef,
                    uint8_t paramSize,bool isHidden)
 {
+  lcdPtr->setCursor(1,row);
+  lcdPtr->print('>');
   //Reset paramter and counter(reference), and refresh display 
   uint8_t hiddenCol = col;
   memset(param,'\0',paramSize);
@@ -66,6 +68,23 @@ void HMI::SetParam(uint8_t col,uint8_t row,
   }
 }
 
+void HMI::DisplayParam(uint8_t col,uint8_t row,char* param,bool isHidden)
+{
+  lcdPtr->setCursor(col,row);
+  if(!isHidden)
+  {
+    lcdPtr->print(param); 
+  }
+  else
+  {
+    uint8_t len = strlen(param);
+    for(uint8_t i = 0; i < len; i++)
+    {
+      lcdPtr->print('X');
+    }
+  }
+}
+
 void HMI::DisplayPageNumber(uint8_t row,uint8_t currentPage,uint8_t lastPage)
 {
   lcdPtr->setCursor(0,row);
@@ -80,35 +99,46 @@ void HMI::DisplayPageNumber(uint8_t row,uint8_t currentPage,uint8_t lastPage)
 
 void HMI::DisplayHelpPage1(void)
 {
-  HMI::DisplayPageNumber(0,1,3);
-  lcdPtr->setCursor(0,1);
+  HMI::DisplayPageNumber(ROW1,PAGE1,PAGE4);
+  lcdPtr->setCursor(0,ROW2);
   lcdPtr->print("- Log in with your");
-  lcdPtr->setCursor(0,2);
+  lcdPtr->setCursor(0,ROW3);
   lcdPtr->print("user ID and PIN. ");
-  lcdPtr->setCursor(0,3);
+  lcdPtr->setCursor(0,ROW4);
   lcdPtr->print("Check your profile.");  
 }
 
 void HMI::DisplayHelpPage2(void)
 {
-  HMI::DisplayPageNumber(0,2,3);
-  lcdPtr->setCursor(0,1);
+  HMI::DisplayPageNumber(ROW1,PAGE2,PAGE4);
+  lcdPtr->setCursor(0,ROW2);
   lcdPtr->print("- Recharge request,");
-  lcdPtr->setCursor(0,2);
+  lcdPtr->setCursor(0,ROW3);
   lcdPtr->print("Format: *Litre* e.g.");  
-  lcdPtr->setCursor(0,3);
+  lcdPtr->setCursor(0,ROW4);
   lcdPtr->print("*25* for 25 litres");   
 }
 
 void HMI::DisplayHelpPage3(void)
 {
-  HMI::DisplayPageNumber(0,3,3);
-  lcdPtr->setCursor(0,1);
+  HMI::DisplayPageNumber(ROW1,PAGE3,PAGE4);
+  lcdPtr->setCursor(0,ROW2);
   lcdPtr->print("- After the request,");
-  lcdPtr->setCursor(0,2);
+  lcdPtr->setCursor(0,ROW3);
   lcdPtr->print("you will get an SMS.");
-  lcdPtr->setCursor(0,3);
+  lcdPtr->setCursor(0,ROW4);
   lcdPtr->print("Enter the token.");  
+}
+
+void HMI::DisplayHelpPage4(void)
+{
+  HMI::DisplayPageNumber(ROW1,PAGE4,PAGE4);
+  lcdPtr->setCursor(0,ROW2);
+  lcdPtr->print("- Press * to save");
+  lcdPtr->setCursor(0,ROW3);
+  lcdPtr->print("changes to your ID,");
+  lcdPtr->setCursor(0,ROW4);
+  lcdPtr->print("PIN, and number.");  
 }
 
 void HMI::DisplayInstructions(void)
@@ -117,6 +147,7 @@ void HMI::DisplayInstructions(void)
   const uint8_t displayState1 = 0;
   const uint8_t displayState2 = 1;
   const uint8_t displayState3 = 2;
+  const uint8_t displayState4 = 3;
   uint8_t displayState = displayState1; 
   lcdPtr->clear();
     
@@ -136,7 +167,7 @@ void HMI::DisplayInstructions(void)
         }
         break;
       case 'D':
-        if(displayState < displayState3)
+        if(displayState < displayState4)
         {
           lcdPtr->clear();
           displayState++;
@@ -155,6 +186,9 @@ void HMI::DisplayInstructions(void)
       case displayState3:
         HMI::DisplayHelpPage3();
         break;
+      case displayState4:
+        HMI::DisplayHelpPage4();
+        break;
     }
   }
 }
@@ -163,9 +197,9 @@ void HMI::DisplayLoginError(void)
 {
   lcdPtr->clear();
   lcdPtr->print("LOGIN ERROR!!");
-  lcdPtr->setCursor(0,1);
+  lcdPtr->setCursor(0,ROW2);
   lcdPtr->print("- TRY AGAIN OR ");
-  lcdPtr->setCursor(0,2);
+  lcdPtr->setCursor(0,ROW3);
   lcdPtr->print("- CALL THE UTILITY");  
 }
 
@@ -173,9 +207,20 @@ void HMI::DisplayLoginSuccess(void)
 {
   lcdPtr->clear();
   lcdPtr->print("LOGIN SUCCESSFUL");
-  lcdPtr->setCursor(0,1);
+  lcdPtr->setCursor(0,ROW2);
   lcdPtr->print("WELCOME USER: ");
   lcdPtr->print(userIndex);   
+}
+
+void HMI::DisplaySaveSuccess(char* infoToDisplayAfterSave,
+                             uint32_t displayDurationMillis)
+{
+  lcdPtr->clear();
+  lcdPtr->print("SAVE SUCCESS:");
+  lcdPtr->setCursor(0,ROW2);
+  lcdPtr->print(infoToDisplayAfterSave); 
+  vTaskDelay(pdMS_TO_TICKS(displayDurationMillis));
+  lcdPtr->clear();
 }
 
 void HMI::PointToRow(char* heading1,char* heading2,
@@ -268,13 +313,9 @@ void HMI::StateFunc_LoginMenu(void)
       switch(currentRow.loginMenu)
       {
         case ROW1:
-          lcdPtr->setCursor(1,ROW1);
-          lcdPtr->print('>');
           HMI::SetParam(idColumn,ROW1,id,counter.id,SIZE_ID);
           break;
         case ROW2:
-          lcdPtr->setCursor(1,ROW2);
-          lcdPtr->print('>');
           HMI::SetParam(pinColumn,ROW2,pin,counter.pin,SIZE_PIN,true);
           break;
         case ROW3:
@@ -307,17 +348,16 @@ void HMI::StateFunc_UserMenu1(void)
   char heading2[] = "  REQUEST:";
   char heading3[] = "  TOKEN:"; 
   char heading4[] = "";
-
+  uint8_t unitsColumn = strlen(heading1);
+  
   HMI::PointToRow(heading1,heading2,
                   heading3,heading4,
-                  currentRow.userMenu1); 
-  HMI::DisplayPageNumber(3,1,3); //Display 4th row
-  GetUnits(userIndex,&volume); //Get volume
-  //LCD column where the display of user input begins
-  uint8_t unitsColumn = strlen(heading1);
+                  currentRow.userMenu1);  
+  GetUnits(userIndex,&volume); 
   lcdPtr->setCursor(unitsColumn,ROW1);
   lcdPtr->print((volume / 1000.0),2); //display units(or volume in litres) in 2dp
   lcdPtr->print("L    "); //some spaces (4) to clear possible leftovers from previous display
+  HMI::DisplayPageNumber(ROW4,PAGE1,PAGE3);
                      
   char key = keypadPtr->GetChar();
   switch(key)
@@ -345,15 +385,20 @@ void HMI::StateFunc_UserMenu1(void)
 
 void HMI::StateFunc_UserMenu2(void)
 {
-  char heading1[] = "****** CHANGE ******";
+  char heading1[] = "  PRESS * TO SAVE";
   char heading2[] = "  USER ID:";
   char heading3[] = "  PIN:"; 
   char heading4[] = "";
-
+  uint8_t idColumn = strlen(heading2);
+  uint8_t pinColumn = strlen(heading3);
+  char infoToDisplayAfterSave[10] = {0};
+  
   HMI::PointToRow(heading1,heading2,
                   heading3,heading4,
                   currentRow.userMenu2); 
-  HMI::DisplayPageNumber(3,2,3); //Display 4th row
+  HMI::DisplayParam(idColumn,ROW2,id);
+  HMI::DisplayParam(pinColumn,ROW3,pin,true);                  
+  HMI::DisplayPageNumber(ROW4,PAGE2,PAGE3);
   
   char key = keypadPtr->GetChar();
   switch(key)
@@ -374,29 +419,40 @@ void HMI::StateFunc_UserMenu2(void)
       switch(currentRow.userMenu2)
       {
         case ROW2:
+          HMI::SetParam(idColumn,ROW2,id,counter.id,SIZE_ID);
           break;
         case ROW3:
+          HMI::SetParam(pinColumn,ROW3,pin,counter.pin,SIZE_PIN,true);
           break;
       }
+      break;
+    case '*':
+      if(StoreUserParam(userIndex,ID,id,SIZE_ID))
+      {
+        strcat(infoToDisplayAfterSave,"-ID");
+      }
+      if(StoreUserParam(userIndex,PIN,pin,SIZE_PIN))
+      {
+        strcat(infoToDisplayAfterSave,"-PIN");
+      }
+      HMI::DisplaySaveSuccess(infoToDisplayAfterSave,3000);
       break;
   }   
 }
 
 void HMI::StateFunc_UserMenu3(void)
 {
-  char heading1[] = "****** CHANGE ******";
+  char heading1[] = "  PRESS * TO SAVE";
   char heading2[] = "  PHONE:";
   char heading3[] = "  MENU"; 
   char heading4[] = "";
-
+  uint8_t phoneColumn = strlen(heading2);
+  
   HMI::PointToRow(heading1,heading2,
                   heading3,heading4,
                   currentRow.userMenu3); 
-  HMI::DisplayPageNumber(3,3,3); //Display 4th row
-  //LCD column where the display of user input begins
-  uint8_t phoneColumn = strlen(heading2);
-  lcdPtr->setCursor(phoneColumn,ROW2);
-  lcdPtr->print(phoneNum);
+  HMI::DisplayParam(phoneColumn,ROW2,phoneNum);
+  HMI::DisplayPageNumber(ROW4,PAGE3,PAGE3); 
   
   char key = keypadPtr->GetChar();
   switch(key)
@@ -414,10 +470,17 @@ void HMI::StateFunc_UserMenu3(void)
       switch(currentRow.userMenu3)
       {
         case ROW2:
+          HMI::SetParam(phoneColumn,ROW2,phoneNum,counter.phoneNum,SIZE_PHONE);
           break;
         case ROW3:
           HMI::ChangeStateTo(ST_MAIN_MENU);
           break;
+      }
+      break;
+    case '*':
+      if(StoreUserParam(userIndex,PHONE,phoneNum,SIZE_PHONE))
+      {
+        HMI::DisplaySaveSuccess("-PHONE NUMBER",3000);
       }
       break;
   }   
@@ -482,5 +545,11 @@ void HMI::RegisterCallback(void(*GetUnits)(UserIndex,float*))
 {
   Serial.println("Registered {GetUnits} callback");
   this->GetUnits = GetUnits;  
+}
+
+void HMI::RegisterCallback(bool(*StoreUserParam)(UserIndex,UserParam,char*,uint8_t))
+{
+  Serial.println("Registered {StoreUserParam} callback");
+  this->StoreUserParam = StoreUserParam;   
 }
 

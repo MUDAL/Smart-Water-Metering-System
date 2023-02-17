@@ -8,6 +8,13 @@ enum UserIndex
   USER_UNKNOWN
 };
 
+enum UserParam
+{
+  ID = 0,
+  PIN,
+  PHONE
+};
+
 class HMI
 {
   private:
@@ -22,6 +29,7 @@ class HMI
       ST_USER_MENU3
     };
     enum Row {ROW1, ROW2, ROW3, ROW4};
+    enum Page {PAGE1 = 1, PAGE2, PAGE3, PAGE4};
     typedef struct
     {
       uint8_t mainMenu;
@@ -53,18 +61,23 @@ class HMI
     UserIndex(*ValidateLogin)(char*,uint8_t,char*,uint8_t); 
     void(*GetPhoneNum)(UserIndex,char*,uint8_t);
     void(*GetUnits)(UserIndex,float*);
+    bool(*StoreUserParam)(UserIndex,UserParam,char*,uint8_t);
     
     //Methods
     void SetParam(uint8_t col,uint8_t row,
                   char* param,uint8_t& counterRef,
                   uint8_t paramSize,bool isHidden = false);
+    void DisplayParam(uint8_t col,uint8_t row,char* param,bool isHidden = false);
     void DisplayPageNumber(uint8_t row,uint8_t currentPage,uint8_t lastPage);
     void DisplayHelpPage1(void);
     void DisplayHelpPage2(void);
     void DisplayHelpPage3(void);
+    void DisplayHelpPage4(void);
     void DisplayInstructions(void);
     void DisplayLoginError(void);
     void DisplayLoginSuccess(void);
+    void DisplaySaveSuccess(char* infoToDisplayAfterSave,
+                            uint32_t displayDurationMillis);
     void PointToRow(char* heading1,char* heading2,
                     char* heading3,char* heading4,
                     uint8_t row);
@@ -81,5 +94,6 @@ class HMI
     void RegisterCallback(UserIndex(*ValidateLogin)(char*,uint8_t,char*,uint8_t));
     void RegisterCallback(void(*GetPhoneNum)(UserIndex,char*,uint8_t));
     void RegisterCallback(void(*GetUnits)(UserIndex,float*));
+    void RegisterCallback(bool(*StoreUserParam)(UserIndex,UserParam,char*,uint8_t));
 };
 
