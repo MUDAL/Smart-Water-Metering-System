@@ -177,6 +177,7 @@ UserIndex ValidateLogin(char* id,uint8_t idSize,char* pin,uint8_t pinSize)
   const uint8_t numOfUsers = 3;
   const UserIndex indexArray[numOfUsers] = {USER1,USER2,USER3};
   UserIndex userIndex = USER_UNKNOWN;
+  
   for(uint8_t i = 0; i < numOfUsers; i++)
   { 
     char idFlash[idSize] = {0};
