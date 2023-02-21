@@ -24,12 +24,18 @@ typedef struct
   float volume1;
   float volume2;
   float volume3;  
-}sensor_t; 
+}sensor_t; //mL
 
-//RTOS Handle(s)
+typedef struct
+{
+  char phoneNum[SIZE_PHONE];
+  char unitsRequired[8];
+  sensor_t sensorData;
+}meter_utility_t;
+
 TaskHandle_t nodeTaskHandle;
 QueueHandle_t nodeToGetUnitsQueue;
-//Object(s)
+QueueHandle_t nodeToUtilityQueue;
 Preferences preferences; //for accessing ESP32 flash memory
 
 void setup() 
@@ -38,13 +44,14 @@ void setup()
   Serial.begin(115200);
   preferences.begin("S-Meter",false); 
   nodeToGetUnitsQueue = xQueueCreate(1,sizeof(sensor_t));
+  nodeToUtilityQueue = xQueueCreate(1,sizeof(sensor_t));
   if(nodeToGetUnitsQueue != NULL)
   {
     Serial.println("Node-GetUnits Queue successfully created");
   }
-  else
+  if(nodeToUtilityQueue != NULL)
   {
-    Serial.println("Node-GetUnits Queue failed");
+    Serial.println("Node-Utility Queue successfully created");
   }
   xTaskCreatePinnedToCore(ApplicationTask,"",30000,NULL,2,NULL,1);
   xTaskCreatePinnedToCore(NodeTask,"",25000,NULL,1,&nodeTaskHandle,1);
@@ -136,14 +143,14 @@ void NodeTask(void* pvParameters)
         Serial.println(sensorData.volume2); 
         Serial.print("User3 volume: ");
         Serial.println(sensorData.volume3);
-        //Place sensor data in the Node-GetUnits Queue
+        //Place sensor data in the appropriate Queue(s)
         if(xQueueSend(nodeToGetUnitsQueue,&sensorData,0) == pdPASS)
         {
           Serial.println("--Data successfully sent to 'GetUnits' callback\n");
         }
-        else
+        if(xQueueSend(nodeToUtilityQueue,&sensorData,0) == pdPASS)
         {
-          Serial.println("--Failed to send data to 'GetUnits' callback\n");
+          Serial.println("--Data successfully sent to Utility task\n");
         }
       }
     }
@@ -156,9 +163,34 @@ void NodeTask(void* pvParameters)
 */
 void UtilityTask(void* pvParameters)
 {
+  const uint8_t chipEn = 15;
+  const uint8_t chipSel = 5; 
+  const byte addr[][6] = {"00001","00002"};
+  static RF24 nrf24(chipEn,chipSel);
+  static meter_utility_t meterToUtility;
+  
+  nrf24.begin();
+  nrf24.openWritingPipe(addr[1]);
+  nrf24.openReadingPipe(1,addr[0]);
+  nrf24.setPALevel(RF24_PA_MAX);
+
+  uint32_t prevTime = millis();
+  
   while(1)
   {
-    
+    if(xQueueReceive(nodeToUtilityQueue,&meterToUtility.sensorData,0) == pdPASS)
+    {
+      Serial.println("--Data successfully received from Node task\n");
+    }
+    if((millis() - prevTime) >= 3000)
+    {
+      nrf24.stopListening();
+      nrf24.write(&meterToUtility,sizeof(meterToUtility)); 
+      nrf24.startListening();
+      //memset(meterToUtility.phoneNum,'\0',strlen(meterToUtility.phoneNum));
+      //memset(meterToUtility.unitsRequired,'\0',strlen(meterToUtility.unitsRequired));
+      prevTime = millis();
+    }
   }
 }
 

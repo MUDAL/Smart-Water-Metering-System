@@ -15,11 +15,17 @@ enum UserParam
   PHONE
 };
 
+enum ParamSize 
+{
+  SIZE_ID = 11, 
+  SIZE_PIN = 11, 
+  SIZE_PHONE = 12
+};
+
 class HMI
 {
   private:
     //Types
-    enum Size {SIZE_ID = 11, SIZE_PIN = 11, SIZE_PHONE = 12};
     enum State 
     {
       ST_MAIN_MENU, 

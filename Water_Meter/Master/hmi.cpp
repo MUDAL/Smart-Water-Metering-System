@@ -134,7 +134,7 @@ void HMI::DisplayHelpPage4(void)
 {
   HMI::DisplayPageNumber(ROW1,PAGE4,PAGE4);
   lcdPtr->setCursor(0,ROW2);
-  lcdPtr->print("*: To request units,");
+  lcdPtr->print("Hit * to recharge,");
   lcdPtr->setCursor(0,ROW3);
   lcdPtr->print("save your ID, PIN,");
   lcdPtr->setCursor(0,ROW4);
@@ -144,11 +144,8 @@ void HMI::DisplayHelpPage4(void)
 void HMI::DisplayInstructions(void)
 {
   //Simple FSM to change info to be displayed
-  const uint8_t displayState1 = 0;
-  const uint8_t displayState2 = 1;
-  const uint8_t displayState3 = 2;
-  const uint8_t displayState4 = 3;
-  uint8_t displayState = displayState1; 
+  enum {DISP_ST1 = 0, DISP_ST2, DISP_ST3, DISP_ST4};
+  uint8_t displayState = DISP_ST1; 
   lcdPtr->clear();
     
   while(1)
@@ -160,14 +157,14 @@ void HMI::DisplayInstructions(void)
         lcdPtr->clear();
         return;
       case 'C':
-        if(displayState > displayState1)
+        if(displayState > DISP_ST1)
         {
           lcdPtr->clear();
           displayState--;
         }
         break;
       case 'D':
-        if(displayState < displayState4)
+        if(displayState < DISP_ST4)
         {
           lcdPtr->clear();
           displayState++;
@@ -177,16 +174,16 @@ void HMI::DisplayInstructions(void)
     
     switch(displayState)
     {
-      case displayState1:
+      case DISP_ST1:
         HMI::DisplayHelpPage1();
         break;
-      case displayState2:
+      case DISP_ST2:
         HMI::DisplayHelpPage2();
         break;
-      case displayState3:
+      case DISP_ST3:
         HMI::DisplayHelpPage3();
         break;
-      case displayState4:
+      case DISP_ST4:
         HMI::DisplayHelpPage4();
         break;
     }
@@ -209,7 +206,7 @@ void HMI::DisplayLoginSuccess(void)
   lcdPtr->print("LOGIN SUCCESSFUL");
   lcdPtr->setCursor(0,ROW2);
   lcdPtr->print("WELCOME USER: ");
-  lcdPtr->print(userIndex);   
+  lcdPtr->print(userIndex + 1);   
 }
 
 void HMI::DisplaySaveSuccess(char* infoToDisplayAfterSave,

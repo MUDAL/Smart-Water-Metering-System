@@ -1,16 +1,31 @@
 #include <WiFi.h>
 #include <Preferences.h>
-#include <WiFiManager.h>
+#include <WiFiManager.h> //Version 2.0.12-beta (tzapu)
 #include <PubSubClient.h>
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h> //Version 1.4.6
 #include "sim800l.h"
 
-//Maximum number of characters for HiveMQ topic(s)
-#define SIZE_TOPIC            30
-//Define textboxes for MQTT topic(s)
+#define SIZE_TOPIC            30 //MQTT topic: Max number of characters
+#define SIZE_PHONE            12
+
+typedef struct
+{
+  float volume1;
+  float volume2;
+  float volume3;  
+}sensor_t; //mL
+
+typedef struct
+{
+  char phoneNum[SIZE_PHONE];
+  char unitsRequired[8];
+  sensor_t sensorData;
+}meter_utility_t;
+
 WiFiManagerParameter subTopic("5","HiveMQ Subscription topic","",SIZE_TOPIC);
-//Object(s)
 Preferences preferences; //for accessing ESP32 flash memory
-//Task handle(s)
 TaskHandle_t wifiTaskHandle;
 
 /**
@@ -34,7 +49,8 @@ void setup()
   preferences.begin("Utility",false);
   xTaskCreatePinnedToCore(WiFiManagementTask,"",7000,NULL,1,&wifiTaskHandle,1);
   xTaskCreatePinnedToCore(MqttTask,"",7000,NULL,1,NULL,1);
-  xTaskCreatePinnedToCore(ApplicationTask,"",20000,NULL,1,NULL,1);  
+  xTaskCreatePinnedToCore(ApplicationTask,"",20000,NULL,1,NULL,1); 
+  xTaskCreatePinnedToCore(MeterTask,"",20000,NULL,1,NULL,1);  
 }
 
 void loop() 
@@ -148,7 +164,7 @@ void MqttTask(void* pvParameters)
 */
 void ApplicationTask(void* pvParameters)
 {
-  static SIM800L gsm(&Serial1,9600,-1,5);
+  static SIM800L gsm(&Serial2,9600);
   bool isWifiTaskSuspended = false;
   
   while(1)
@@ -167,6 +183,37 @@ void ApplicationTask(void* pvParameters)
       vTaskResume(wifiTaskHandle);
       isWifiTaskSuspended = false;
     }  
+  }
+}
+
+/**
+ * @brief Handles communication with the meter.
+*/
+void MeterTask(void* pvParameters)
+{
+  const uint8_t chipEn = 15;
+  const uint8_t chipSel = 5; 
+  const byte addr[][6] = {"00001","00002"};
+  static RF24 nrf24(chipEn,chipSel);
+
+  nrf24.begin();
+  nrf24.openWritingPipe(addr[0]);
+  nrf24.openReadingPipe(1,addr[1]);
+  nrf24.setPALevel(RF24_PA_MAX);
+
+  nrf24.startListening();
+    
+  while(1)
+  {
+    if(nrf24.available())
+    {
+      meter_utility_t meterToUtility = {};
+      nrf24.read(&meterToUtility,sizeof(meterToUtility));
+      Serial.println("User volumes: ");
+      Serial.println(meterToUtility.sensorData.volume1);
+      Serial.println(meterToUtility.sensorData.volume2);
+      Serial.println(meterToUtility.sensorData.volume3);
+    }
   }
 }
 
