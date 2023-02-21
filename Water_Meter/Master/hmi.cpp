@@ -112,11 +112,11 @@ void HMI::DisplayHelpPage2(void)
 {
   HMI::DisplayPageNumber(ROW1,PAGE2,PAGE4);
   lcdPtr->setCursor(0,ROW2);
-  lcdPtr->print("- Recharge request,");
+  lcdPtr->print("- Recharge request:");
   lcdPtr->setCursor(0,ROW3);
-  lcdPtr->print("Format: *Litre* e.g.");  
+  lcdPtr->print("Enter units e.g.");  
   lcdPtr->setCursor(0,ROW4);
-  lcdPtr->print("*25* for 25 litres");   
+  lcdPtr->print("25 for 25 litres");   
 }
 
 void HMI::DisplayHelpPage3(void)
@@ -134,11 +134,11 @@ void HMI::DisplayHelpPage4(void)
 {
   HMI::DisplayPageNumber(ROW1,PAGE4,PAGE4);
   lcdPtr->setCursor(0,ROW2);
-  lcdPtr->print("- Press * to save");
+  lcdPtr->print("*: To request units,");
   lcdPtr->setCursor(0,ROW3);
-  lcdPtr->print("changes to your ID,");
+  lcdPtr->print("save your ID, PIN,");
   lcdPtr->setCursor(0,ROW4);
-  lcdPtr->print("PIN, and number.");  
+  lcdPtr->print("and phone number.");  
 }
 
 void HMI::DisplayInstructions(void)
