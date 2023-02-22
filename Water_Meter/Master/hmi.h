@@ -7,20 +7,9 @@ enum UserIndex
   USER3,
   USER_UNKNOWN
 };
-
-enum UserParam
-{
-  ID = 0,
-  PIN,
-  PHONE
-};
-
-enum ParamSize 
-{
-  SIZE_ID = 11, 
-  SIZE_PIN = 11, 
-  SIZE_PHONE = 12
-};
+enum UserParam {ID = 0, PIN, PHONE};
+enum ParamSize {SIZE_ID = 11, SIZE_PIN = 11, SIZE_PHONE = 12};
+enum BufferSize {SIZE_REQUEST = 11, SIZE_TOKEN = 11};
 
 class HMI
 {
@@ -35,7 +24,6 @@ class HMI
     };
     enum Row {ROW1, ROW2, ROW3, ROW4};
     enum Page {PAGE1 = 1, PAGE2, PAGE3, PAGE4};
-    enum Buffer {REQUEST_SIZE = 11, TOKEN_SIZE = 11};
     typedef struct
     {
       uint8_t mainMenu;
@@ -62,8 +50,8 @@ class HMI
     char id[SIZE_ID];
     char pin[SIZE_PIN];
     char phoneNum[SIZE_PHONE];
-    char reqBuff[REQUEST_SIZE];
-    char tokenBuff[TOKEN_SIZE];
+    char reqBuff[SIZE_REQUEST];
+    char tokenBuff[SIZE_TOKEN];
     UserIndex userIndex;
     float volume;
 

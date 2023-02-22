@@ -411,10 +411,10 @@ void HMI::StateFunc_UserMenu1(void)
       switch(currentRow.userMenu1)
       {
         case ROW2:
-          HMI::SetParam(reqColumn,ROW2,reqBuff,counter.request,REQUEST_SIZE);
+          HMI::SetParam(reqColumn,ROW2,reqBuff,counter.request,SIZE_REQUEST);
           break;
         case ROW3:
-          HMI::SetParam(tokenColumn,ROW3,tokenBuff,counter.token,TOKEN_SIZE);
+          HMI::SetParam(tokenColumn,ROW3,tokenBuff,counter.token,SIZE_TOKEN);
           break;
       }
       break;
@@ -426,7 +426,7 @@ void HMI::StateFunc_UserMenu1(void)
           {
             StringToInteger(reqBuff,&request);
             requestSent = HandleRecharge(userIndex,request);
-            memset(reqBuff,'\0',REQUEST_SIZE); 
+            memset(reqBuff,'\0',SIZE_REQUEST); 
           }
           if(requestSent)
           {
@@ -572,7 +572,7 @@ HMI::HMI(LiquidCrystal_I2C* lcdPtr,Keypad* keypadPtr)
   memset(id,'\0',SIZE_ID);
   memset(pin,'\0',SIZE_PIN);
   memset(phoneNum,'\0',SIZE_PHONE);
-  memset(reqBuff,'\0',REQUEST_SIZE);
+  memset(reqBuff,'\0',SIZE_REQUEST);
   userIndex = USER_UNKNOWN; 
   volume = 0;
 }

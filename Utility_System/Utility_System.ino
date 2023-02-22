@@ -10,6 +10,7 @@
 #define SIZE_TOPIC            30 //MQTT topic: Max number of characters
 #define SIZE_PHONE            12
 
+//Meter(Master) -> Utility
 typedef struct
 {
   float volume1;
@@ -21,11 +22,23 @@ typedef struct
 {
   char phoneNum[SIZE_PHONE];
   uint32_t units;
+}recharge_util_t;
+
+typedef struct
+{
+  recharge_util_t recharge;
   sensor_t sensorData;
 }meter_util_t;
+//Queues
+typedef struct
+{
+  QueueHandle_t utilToMqtt;
+  QueueHandle_t utilToApp;
+}queue_t;
 
 WiFiManagerParameter subTopic("5","HiveMQ Subscription topic","",SIZE_TOPIC);
 Preferences preferences; //for accessing ESP32 flash memory
+queue_t queue;
 TaskHandle_t wifiTaskHandle;
 
 /**
@@ -41,12 +54,29 @@ static void StoreNewFlashData(const char* flashLoc,const char* newData,
   }
 }
 
+/**
+ * @brief Send auto-generated token to the meter of the user that 
+ * just sent a request to recharge.
+*/
+static void SendTokenToMeter(RF24& nrf24)
+{
+  nrf24.stopListening();
+  //TO-DO: Add code to send the token
+  nrf24.startListening();
+}
+
 void setup() 
 {
   // put your setup code here, to run once:
   setCpuFrequencyMhz(80);
   Serial.begin(115200);  
   preferences.begin("Utility",false);
+  queue.utilToMqtt = xQueueCreate(1,sizeof(sensor_t));
+  queue.utilToApp = xQueueCreate(1,sizeof(recharge_util_t));
+  if(queue.utilToMqtt != NULL && queue.utilToApp != NULL)
+  {
+    Serial.println("Queues successfully created");
+  }  
   xTaskCreatePinnedToCore(WiFiManagementTask,"",7000,NULL,1,&wifiTaskHandle,1);
   xTaskCreatePinnedToCore(MqttTask,"",7000,NULL,1,NULL,1);
   xTaskCreatePinnedToCore(ApplicationTask,"",20000,NULL,1,NULL,1); 
@@ -55,8 +85,6 @@ void setup()
 
 void loop() 
 {
-  // put your main code here, to run repeatedly:
-
 }
 
 /**
@@ -209,16 +237,22 @@ void MeterTask(void* pvParameters)
     {
       meter_util_t meterToUtil = {};
       nrf24.read(&meterToUtil,sizeof(meterToUtil));
-      Serial.print("Struct size: ");
-      Serial.println(sizeof(meterToUtil));
+      //Debug
       Serial.println("User volumes: ");
       Serial.println(meterToUtil.sensorData.volume1);
       Serial.println(meterToUtil.sensorData.volume2);
       Serial.println(meterToUtil.sensorData.volume3);
       Serial.print("Phone: ");
-      Serial.println(meterToUtil.phoneNum);
+      Serial.println(meterToUtil.recharge.phoneNum);
       Serial.print("Units required: ");
-      Serial.println(meterToUtil.units);
+      Serial.println(meterToUtil.recharge.units);
+      /*TO-DO: Add code to send 'volume used' by users to the MQTT task via a Queue*/
+      if(strcmp(meterToUtil.recharge.phoneNum,"") && 
+        (meterToUtil.recharge.units > 0))
+      {
+        SendTokenToMeter(nrf24);
+        /*TO-DO: Add code to send phone number to App task via a Queue*/
+      }
     }
   }
 }

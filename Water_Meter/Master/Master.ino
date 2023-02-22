@@ -18,37 +18,43 @@
  * 3. All phone numbers are stored in memory locations with labels "6","7", and "8".
 */
 
-//Type(s)
+//Node -> Master
 typedef struct
 {
   float volume1;
   float volume2;
   float volume3;  
 }sensor_t; //mL
-
+//Recharge -> Utility
 typedef struct
 {
   char phoneNum[SIZE_PHONE];
   uint32_t units;
 }recharge_util_t;
-
+//Master -> Utility
 typedef struct
 {
   recharge_util_t recharge;
   sensor_t sensorData;
 }meter_util_t;
-
+//Recharge -> Node
 typedef struct
 {
   UserIndex userIndex;
   uint32_t units;
 }recharge_node_t;
+//Queues
+typedef struct
+{
+  QueueHandle_t nodeToGetUnits;
+  QueueHandle_t nodeToUtil;
+  QueueHandle_t rechargeToUtil;
+  QueueHandle_t rechargeToNode;  
+  QueueHandle_t utilToToken;
+}queue_t;
 
+queue_t queue;
 TaskHandle_t nodeTaskHandle;
-QueueHandle_t nodeToGetUnitsQueue;
-QueueHandle_t nodeToUtilityQueue;
-QueueHandle_t requestToUtilityQueue;
-QueueHandle_t requestToNodeQueue;
 Preferences preferences; //for accessing ESP32 flash memory
 
 void setup() 
@@ -56,26 +62,18 @@ void setup()
   setCpuFrequencyMhz(80);
   Serial.begin(115200);
   preferences.begin("S-Meter",false); 
-  nodeToGetUnitsQueue = xQueueCreate(1,sizeof(sensor_t));
-  nodeToUtilityQueue = xQueueCreate(1,sizeof(sensor_t));
-  requestToUtilityQueue = xQueueCreate(1,sizeof(recharge_util_t));
-  requestToNodeQueue = xQueueCreate(1,sizeof(recharge_node_t));
-  if(nodeToGetUnitsQueue != NULL)
+  queue.nodeToGetUnits = xQueueCreate(1,sizeof(sensor_t));
+  queue.nodeToUtil = xQueueCreate(1,sizeof(sensor_t));
+  queue.rechargeToUtil = xQueueCreate(1,sizeof(recharge_util_t));
+  queue.rechargeToNode = xQueueCreate(1,sizeof(recharge_node_t));
+  queue.utilToToken = xQueueCreate(1,SIZE_TOKEN * sizeof(char));
+  
+  if(queue.nodeToGetUnits != NULL && queue.nodeToUtil != NULL &&
+     queue.rechargeToUtil != NULL && queue.rechargeToNode != NULL &&
+     queue.utilToToken != NULL)
   {
-    Serial.println("Node-GetUnits Queue successfully created");
+    Serial.println("Queues successfully created");
   }
-  if(nodeToUtilityQueue != NULL)
-  {
-    Serial.println("Node-Utility Queue successfully created");
-  }
-  if(requestToUtilityQueue != NULL)
-  {
-    Serial.println("Request-Utility Queue successfully created");
-  }
-  if(requestToNodeQueue != NULL)
-  {
-    Serial.println("Request-Node Queue successfully created");
-  }  
   xTaskCreatePinnedToCore(ApplicationTask,"",30000,NULL,2,NULL,1);
   xTaskCreatePinnedToCore(NodeTask,"",25000,NULL,1,&nodeTaskHandle,1);
   xTaskCreatePinnedToCore(UtilityTask,"",25000,NULL,1,NULL,1);
@@ -154,7 +152,7 @@ void NodeTask(void* pvParameters)
       mni.EncodeData(0,MNI::TxDataId::USER3_RECHARGE);
       /*TO-DO: Execute the block below when token has been verified*/
 //      recharge_node_t rechargeToNode = {};
-//      if(xQueueReceive(requestToNodeQueue,&rechargeToNode,0) == pdPASS)
+//      if(xQueueReceive(queue.rechargeToNode,&rechargeToNode,0) == pdPASS)
 //      {
 //        switch(rechargeToNode.userIndex)
 //        {
@@ -189,11 +187,11 @@ void NodeTask(void* pvParameters)
         Serial.print("User3 volume: ");
         Serial.println(sensorData.volume3);
         //Place sensor data in the appropriate Queue(s)
-        if(xQueueSend(nodeToGetUnitsQueue,&sensorData,0) == pdPASS)
+        if(xQueueSend(queue.nodeToGetUnits,&sensorData,0) == pdPASS)
         {
           Serial.println("--Data successfully sent to 'GetUnits' callback\n");
         }
-        if(xQueueSend(nodeToUtilityQueue,&sensorData,0) == pdPASS)
+        if(xQueueSend(queue.nodeToUtil,&sensorData,0) == pdPASS)
         {
           Serial.println("--Data successfully sent to Utility task\n");
         }
@@ -222,11 +220,11 @@ void UtilityTask(void* pvParameters)
   
   while(1)
   {
-    if(xQueueReceive(nodeToUtilityQueue,&meterToUtil.sensorData,0) == pdPASS)
+    if(xQueueReceive(queue.nodeToUtil,&meterToUtil.sensorData,0) == pdPASS)
     {
       Serial.println("Node-Util RX PASS\n");
     }
-    if(xQueueReceive(requestToUtilityQueue,&meterToUtil.recharge,0) == pdPASS)
+    if(xQueueReceive(queue.rechargeToUtil,&meterToUtil.recharge,0) == pdPASS)
     {
       Serial.println("Request-Util RX PASS\n");
     }
@@ -319,7 +317,7 @@ void GetUnits(UserIndex userIndex,float* volumePtr)
     return; //invalid index
   }  
   sensor_t sensorData = {};
-  if(xQueueReceive(nodeToGetUnitsQueue,&sensorData,0) != pdPASS)
+  if(xQueueReceive(queue.nodeToGetUnits,&sensorData,0) != pdPASS)
   {
     return;
   }
@@ -404,8 +402,8 @@ bool HandleRecharge(UserIndex userIndex,uint32_t unitsRequired)
     Serial.println("Request Error: Invalid user");
     return false; //invalid index
   }   
-  bool requestToUtilSent = false; 
-  bool requestToNodeSent = false;
+  bool isSentToUtil = false; 
+  bool isSentToNode = false;
   char flashLoc[2] = {0};
   flashLoc[0] = '6' + userIndex; //to get phone number's location in flash memory
   recharge_util_t rechargeToUtil = {};
@@ -416,17 +414,17 @@ bool HandleRecharge(UserIndex userIndex,uint32_t unitsRequired)
   rechargeToNode.userIndex = userIndex;
   rechargeToNode.units = unitsRequired;
   
-  if(xQueueSend(requestToUtilityQueue,&rechargeToUtil,0) == pdPASS)
+  if(xQueueSend(queue.rechargeToUtil,&rechargeToUtil,0) == pdPASS)
   {
-    requestToUtilSent = true;
+    isSentToUtil = true;
     Serial.println("Request-Util TX PASS\n");
   }
-  if(xQueueSend(requestToNodeQueue,&rechargeToNode,0) == pdPASS)
+  if(xQueueSend(queue.rechargeToNode,&rechargeToNode,0) == pdPASS)
   {
-    requestToNodeSent = true;
+    isSentToNode = true;
     Serial.println("Request-Node TX PASS\n");
   }
-  return (requestToUtilSent && requestToNodeSent);  
+  return (isSentToUtil && isSentToNode);  
 }
 
 bool CompareTokens(char* tokenEnteredByUser)
