@@ -436,7 +436,7 @@ void HMI::StateFunc_UserMenu1(void)
         case ROW3:
           if(strcmp(tokenBuff,""))
           {
-            
+            /*TO-DO: Code to call callback function to handle Token validation*/
           }
           break;
       }
@@ -569,10 +569,12 @@ HMI::HMI(LiquidCrystal_I2C* lcdPtr,Keypad* keypadPtr)
   counter.pin = 0;
   counter.phoneNum = 0;
   counter.request = 0;
+  counter.token = 0;
   memset(id,'\0',SIZE_ID);
   memset(pin,'\0',SIZE_PIN);
   memset(phoneNum,'\0',SIZE_PHONE);
   memset(reqBuff,'\0',SIZE_REQUEST);
+  memset(tokenBuff,'\0',SIZE_TOKEN);
   userIndex = USER_UNKNOWN; 
   volume = 0;
 }
