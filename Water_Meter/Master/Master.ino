@@ -29,13 +29,19 @@ typedef struct
 typedef struct
 {
   char phoneNum[SIZE_PHONE];
-  char unitsRequired[8];
+  uint32_t units;
+}recharge_t;
+
+typedef struct
+{
+  recharge_t recharge;
   sensor_t sensorData;
 }meter_utility_t;
 
 TaskHandle_t nodeTaskHandle;
 QueueHandle_t nodeToGetUnitsQueue;
 QueueHandle_t nodeToUtilityQueue;
+QueueHandle_t requestToUtilityQueue;
 Preferences preferences; //for accessing ESP32 flash memory
 
 void setup() 
@@ -45,6 +51,7 @@ void setup()
   preferences.begin("S-Meter",false); 
   nodeToGetUnitsQueue = xQueueCreate(1,sizeof(sensor_t));
   nodeToUtilityQueue = xQueueCreate(1,sizeof(sensor_t));
+  requestToUtilityQueue = xQueueCreate(1,sizeof(recharge_t));
   if(nodeToGetUnitsQueue != NULL)
   {
     Serial.println("Node-GetUnits Queue successfully created");
@@ -52,6 +59,10 @@ void setup()
   if(nodeToUtilityQueue != NULL)
   {
     Serial.println("Node-Utility Queue successfully created");
+  }
+  if(requestToUtilityQueue != NULL)
+  {
+    Serial.println("Request-Utility Queue successfully created");
   }
   xTaskCreatePinnedToCore(ApplicationTask,"",30000,NULL,2,NULL,1);
   xTaskCreatePinnedToCore(NodeTask,"",25000,NULL,1,&nodeTaskHandle,1);
@@ -75,10 +86,13 @@ void ApplicationTask(void* pvParameters)
   static LiquidCrystal_I2C lcd(0x27,20,4);
   static Keypad keypad(rowPins,columnPins); 
   static HMI hmi(&lcd,&keypad);
+  
   hmi.RegisterCallback(ValidateLogin);
   hmi.RegisterCallback(GetPhoneNum);
   hmi.RegisterCallback(GetUnits);
   hmi.RegisterCallback(StoreUserParam);
+  hmi.RegisterCallback(HandleRecharge);
+  
   //Startup message
   lcd.init();
   lcd.backlight();
@@ -167,28 +181,32 @@ void UtilityTask(void* pvParameters)
   const uint8_t chipSel = 5; 
   const byte addr[][6] = {"00001","00002"};
   static RF24 nrf24(chipEn,chipSel);
-  static meter_utility_t meterToUtility;
+  static meter_utility_t meterToUtil;
   
   nrf24.begin();
   nrf24.openWritingPipe(addr[1]);
   nrf24.openReadingPipe(1,addr[0]);
   nrf24.setPALevel(RF24_PA_MAX);
-
   uint32_t prevTime = millis();
   
   while(1)
   {
-    if(xQueueReceive(nodeToUtilityQueue,&meterToUtility.sensorData,0) == pdPASS)
+    if(xQueueReceive(nodeToUtilityQueue,&meterToUtil.sensorData,0) == pdPASS)
     {
-      Serial.println("--Data successfully received from Node task\n");
+      Serial.println("Node-Util RX PASS\n");
+    }
+    if(xQueueReceive(requestToUtilityQueue,&meterToUtil.recharge,0) == pdPASS)
+    {
+      Serial.println("Request-Util RX PASS\n");
     }
     if((millis() - prevTime) >= 3000)
     {
       nrf24.stopListening();
-      nrf24.write(&meterToUtility,sizeof(meterToUtility)); 
+      nrf24.write(&meterToUtil,sizeof(meterToUtil)); 
       nrf24.startListening();
-      //memset(meterToUtility.phoneNum,'\0',strlen(meterToUtility.phoneNum));
-      //memset(meterToUtility.unitsRequired,'\0',strlen(meterToUtility.unitsRequired));
+      //Clear phone number and units required
+      memset(meterToUtil.recharge.phoneNum,'\0',SIZE_PHONE);
+      meterToUtil.recharge.units = 0;
       prevTime = millis();
     }
   }
@@ -303,22 +321,26 @@ void GetUnits(UserIndex userIndex,float* volumePtr)
 */
 bool StoreUserParam(UserIndex userIndex,UserParam paramType,
                     char* param,uint8_t paramSize)
-{
-  bool isParamStored = false;
+{  
+  if(userIndex == USER_UNKNOWN)
+  {
+    Serial.println("Storage Error: Invalid user");
+    return false; //invalid index
+  }
+  bool isParamStored = false; 
   char paramFlash[paramSize]; //to hold previous value of 'param' stored in flash.
   char flashLoc[2] = {0};
-  uint8_t index = (uint8_t)userIndex;
   
   switch(paramType)
   {
     case ID:
-      flashLoc[0] = '0' + index;
+      flashLoc[0] = '0' + userIndex;
       break;
     case PIN:
-      flashLoc[0] = '3' + index;
+      flashLoc[0] = '3' + userIndex;
       break;
     case PHONE:
-      flashLoc[0] = '6' + index;
+      flashLoc[0] = '6' + userIndex;
       break;
   }
   preferences.getBytes(flashLoc,paramFlash,paramSize); 
@@ -329,5 +351,40 @@ bool StoreUserParam(UserIndex userIndex,UserParam paramType,
     isParamStored = true;
   }
   return isParamStored;
+}
+
+/**
+ * @brief Callback function that is called when a user requests  
+ * for more units (via the HMI) in order to recharge. It sends the  
+ * user's phone number and 'units required for recharge' to the 
+ * 'Utility task'
+ * 
+ * @param userIndex: To determine the user whose information is required.
+ * @param unitsRequired: Number of units required by the user. 
+ * for recharge.  
+ * @return true if recharge request has been sent to the utility task. 
+ *         false if otherwise.  
+ *                                                                        
+*/
+bool HandleRecharge(UserIndex userIndex,uint32_t unitsRequired)
+{
+  if(userIndex == USER_UNKNOWN)
+  {
+    Serial.println("Request Error: Invalid user");
+    return false; //invalid index
+  }   
+  bool requestSent = false; 
+  char flashLoc[2] = {0};
+  flashLoc[0] = '6' + userIndex; //to get phone number's location in flash memory
+  recharge_t recharge = {};
+  
+  preferences.getBytes(flashLoc,recharge.phoneNum,SIZE_PHONE);
+  recharge.units = unitsRequired;
+  if(xQueueSend(requestToUtilityQueue,&recharge,0) == pdPASS)
+  {
+    requestSent = true;
+    Serial.println("Request-Util TX PASS\n");
+  }
+  return requestSent;  
 }
 

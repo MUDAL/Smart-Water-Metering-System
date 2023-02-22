@@ -25,7 +25,6 @@ enum ParamSize
 class HMI
 {
   private:
-    //Types
     enum State 
     {
       ST_MAIN_MENU, 
@@ -36,6 +35,7 @@ class HMI
     };
     enum Row {ROW1, ROW2, ROW3, ROW4};
     enum Page {PAGE1 = 1, PAGE2, PAGE3, PAGE4};
+    enum Buffer {REQUEST_SIZE = 11};
     typedef struct
     {
       uint8_t mainMenu;
@@ -49,6 +49,7 @@ class HMI
       uint8_t id;
       uint8_t pin;
       uint8_t phoneNum;  
+      uint8_t request;
     }counter_t; //Counter for setting configurable parameter
     
     //Objects and variables
@@ -60,6 +61,7 @@ class HMI
     char id[SIZE_ID];
     char pin[SIZE_PIN];
     char phoneNum[SIZE_PHONE];
+    char reqBuff[REQUEST_SIZE];
     UserIndex userIndex;
     float volume;
 
@@ -68,6 +70,7 @@ class HMI
     void(*GetPhoneNum)(UserIndex,char*,uint8_t);
     void(*GetUnits)(UserIndex,float*);
     bool(*StoreUserParam)(UserIndex,UserParam,char*,uint8_t);
+    bool(*HandleRecharge)(UserIndex,uint32_t);
     
     //Methods
     void SetParam(uint8_t col,uint8_t row,
@@ -83,7 +86,8 @@ class HMI
     void DisplayLoginError(void);
     void DisplayLoginSuccess(void);
     void DisplaySaveSuccess(char* infoToDisplayAfterSave,
-                            uint32_t displayDurationMillis);
+                            uint32_t displayPeriodMillis);
+    void DisplayRequestSuccess(uint32_t displayPeriodMillis);
     void PointToRow(char* heading1,char* heading2,
                     char* heading3,char* heading4,
                     uint8_t row);
@@ -101,5 +105,6 @@ class HMI
     void RegisterCallback(void(*GetPhoneNum)(UserIndex,char*,uint8_t));
     void RegisterCallback(void(*GetUnits)(UserIndex,float*));
     void RegisterCallback(bool(*StoreUserParam)(UserIndex,UserParam,char*,uint8_t));
+    void RegisterCallback(bool(*HandleRecharge)(UserIndex,uint32_t));
 };
 

@@ -20,7 +20,7 @@ typedef struct
 typedef struct
 {
   char phoneNum[SIZE_PHONE];
-  char unitsRequired[8];
+  uint32_t units;
   sensor_t sensorData;
 }meter_utility_t;
 
@@ -207,12 +207,18 @@ void MeterTask(void* pvParameters)
   {
     if(nrf24.available())
     {
-      meter_utility_t meterToUtility = {};
-      nrf24.read(&meterToUtility,sizeof(meterToUtility));
+      meter_utility_t meterToUtil = {};
+      nrf24.read(&meterToUtil,sizeof(meterToUtil));
+      Serial.print("Struct size: ");
+      Serial.println(sizeof(meterToUtil));
       Serial.println("User volumes: ");
-      Serial.println(meterToUtility.sensorData.volume1);
-      Serial.println(meterToUtility.sensorData.volume2);
-      Serial.println(meterToUtility.sensorData.volume3);
+      Serial.println(meterToUtil.sensorData.volume1);
+      Serial.println(meterToUtil.sensorData.volume2);
+      Serial.println(meterToUtil.sensorData.volume3);
+      Serial.print("Phone: ");
+      Serial.println(meterToUtil.phoneNum);
+      Serial.print("Units required: ");
+      Serial.println(meterToUtil.units);
     }
   }
 }

@@ -6,6 +6,27 @@
 #include "hmi.h"
 
 /**
+ * @brief Converts a string to an integer.
+ * e.g.
+ * "932" to 932:
+ * '9' - '0' = 9
+ * '3' - '0' = 3
+ * '2' - '0' = 2
+ * 9 x 10^2 + 3 x 10^1 + 2 x 10^0 = 932.
+*/
+void StringToInteger(char* stringPtr,uint32_t* integerPtr)
+{
+  uint32_t integer = 0;
+  uint8_t len = strlen(stringPtr);
+  uint32_t j = 1;
+  for(uint8_t i = 0; i < len; i++)
+  {
+    *integerPtr += ((stringPtr[len - i - 1] - '0') * j);
+    j *= 10;
+  }
+}
+
+/**
  * @brief Configures parameters (e.g. user ID, pin, phone number).
  * @param col: Column in which user input will start being displayed.  
  * @param row: Row in which user input will start being displayed.  
@@ -210,14 +231,28 @@ void HMI::DisplayLoginSuccess(void)
 }
 
 void HMI::DisplaySaveSuccess(char* infoToDisplayAfterSave,
-                             uint32_t displayDurationMillis)
+                             uint32_t displayPeriodMillis)
 {
   lcdPtr->clear();
   lcdPtr->print("SAVE SUCCESS:");
   lcdPtr->setCursor(0,ROW2);
   lcdPtr->print(infoToDisplayAfterSave); 
-  vTaskDelay(pdMS_TO_TICKS(displayDurationMillis));
+  vTaskDelay(pdMS_TO_TICKS(displayPeriodMillis));
   lcdPtr->clear();
+}
+
+void HMI::DisplayRequestSuccess(uint32_t displayPeriodMillis)
+{
+  lcdPtr->clear();
+  lcdPtr->print("YOUR REQUEST HAS");  
+  lcdPtr->setCursor(0,ROW2);
+  lcdPtr->print("BEEN SENT TO THE");
+  lcdPtr->setCursor(0,ROW3);
+  lcdPtr->print("UTILITY. WAIT FOR");
+  lcdPtr->setCursor(0,ROW4);
+  lcdPtr->print("YOUR TOKEN (SMS). ");
+  vTaskDelay(pdMS_TO_TICKS(displayPeriodMillis));
+  lcdPtr->clear();  
 }
 
 void HMI::PointToRow(char* heading1,char* heading2,
@@ -346,6 +381,9 @@ void HMI::StateFunc_UserMenu1(void)
   char heading3[] = "  TOKEN:"; 
   char heading4[] = "";
   uint8_t unitsColumn = strlen(heading1);
+  uint8_t reqColumn = strlen(heading2);
+  uint32_t request = 0;
+  bool requestSent = false;
   
   HMI::PointToRow(heading1,heading2,
                   heading3,heading4,
@@ -372,6 +410,23 @@ void HMI::StateFunc_UserMenu1(void)
       switch(currentRow.userMenu1)
       {
         case ROW2:
+          HMI::SetParam(reqColumn,ROW2,reqBuff,counter.request,REQUEST_SIZE);
+          break;
+        case ROW3:
+          break;
+      }
+      break;
+    case '*':
+      switch(currentRow.userMenu1)
+      {
+        case ROW2:
+          StringToInteger(reqBuff,&request);
+          requestSent = HandleRecharge(userIndex,request);
+          memset(reqBuff,'\0',REQUEST_SIZE);
+          if(requestSent)
+          {
+            HMI::DisplayRequestSuccess(3000);
+          }
           break;
         case ROW3:
           break;
@@ -389,6 +444,8 @@ void HMI::StateFunc_UserMenu2(void)
   uint8_t idColumn = strlen(heading2);
   uint8_t pinColumn = strlen(heading3);
   char infoToDisplayAfterSave[10] = {0};
+  bool isIdSaved = false;
+  bool isPinSaved = false;
   
   HMI::PointToRow(heading1,heading2,
                   heading3,heading4,
@@ -424,15 +481,20 @@ void HMI::StateFunc_UserMenu2(void)
       }
       break;
     case '*':
-      if(StoreUserParam(userIndex,ID,id,SIZE_ID))
+      isIdSaved = StoreUserParam(userIndex,ID,id,SIZE_ID);
+      isPinSaved = StoreUserParam(userIndex,PIN,pin,SIZE_PIN);
+      if(isIdSaved)
       {
         strcat(infoToDisplayAfterSave,"-ID");
       }
-      if(StoreUserParam(userIndex,PIN,pin,SIZE_PIN))
+      if(isPinSaved)
       {
         strcat(infoToDisplayAfterSave,"-PIN");
       }
-      HMI::DisplaySaveSuccess(infoToDisplayAfterSave,3000);
+      if(isIdSaved || isPinSaved)
+      {
+        HMI::DisplaySaveSuccess(infoToDisplayAfterSave,2000); 
+      }
       break;
   }   
 }
@@ -477,7 +539,7 @@ void HMI::StateFunc_UserMenu3(void)
     case '*':
       if(StoreUserParam(userIndex,PHONE,phoneNum,SIZE_PHONE))
       {
-        HMI::DisplaySaveSuccess("-PHONE NUMBER",3000);
+        HMI::DisplaySaveSuccess("-PHONE NUMBER",2000);
       }
       break;
   }   
@@ -497,9 +559,11 @@ HMI::HMI(LiquidCrystal_I2C* lcdPtr,Keypad* keypadPtr)
   counter.id = 0;
   counter.pin = 0;
   counter.phoneNum = 0;
+  counter.request = 0;
   memset(id,'\0',SIZE_ID);
   memset(pin,'\0',SIZE_PIN);
   memset(phoneNum,'\0',SIZE_PHONE);
+  memset(reqBuff,'\0',REQUEST_SIZE);
   userIndex = USER_UNKNOWN; 
   volume = 0;
 }
@@ -548,5 +612,11 @@ void HMI::RegisterCallback(bool(*StoreUserParam)(UserIndex,UserParam,char*,uint8
 {
   Serial.println("Registered {StoreUserParam} callback");
   this->StoreUserParam = StoreUserParam;   
+}
+
+void HMI::RegisterCallback(bool(*HandleRecharge)(UserIndex,uint32_t))
+{
+  Serial.println("Registered {HandleRecharge} callback");
+  this->HandleRecharge = HandleRecharge;   
 }
 
