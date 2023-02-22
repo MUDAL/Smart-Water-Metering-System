@@ -19,7 +19,7 @@ float FlowSensor::GetVolume(void)
   //Deduct 2.1mL if a pulse is detected
   if(digitalRead(pin) && !isPrevHigh)
   {
-    volume = volume - 2.1;
+    volume -= 2.1;
     if(volume < 0)
     {
       volume = 0;

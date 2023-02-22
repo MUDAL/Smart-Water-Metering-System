@@ -22,7 +22,7 @@ typedef struct
   char phoneNum[SIZE_PHONE];
   uint32_t units;
   sensor_t sensorData;
-}meter_utility_t;
+}meter_util_t;
 
 WiFiManagerParameter subTopic("5","HiveMQ Subscription topic","",SIZE_TOPIC);
 Preferences preferences; //for accessing ESP32 flash memory
@@ -207,7 +207,7 @@ void MeterTask(void* pvParameters)
   {
     if(nrf24.available())
     {
-      meter_utility_t meterToUtil = {};
+      meter_util_t meterToUtil = {};
       nrf24.read(&meterToUtil,sizeof(meterToUtil));
       Serial.print("Struct size: ");
       Serial.println(sizeof(meterToUtil));

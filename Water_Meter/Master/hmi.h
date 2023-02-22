@@ -35,7 +35,7 @@ class HMI
     };
     enum Row {ROW1, ROW2, ROW3, ROW4};
     enum Page {PAGE1 = 1, PAGE2, PAGE3, PAGE4};
-    enum Buffer {REQUEST_SIZE = 11};
+    enum Buffer {REQUEST_SIZE = 11, TOKEN_SIZE = 11};
     typedef struct
     {
       uint8_t mainMenu;
@@ -50,6 +50,7 @@ class HMI
       uint8_t pin;
       uint8_t phoneNum;  
       uint8_t request;
+      uint8_t token;
     }counter_t; //Counter for setting configurable parameter
     
     //Objects and variables
@@ -62,6 +63,7 @@ class HMI
     char pin[SIZE_PIN];
     char phoneNum[SIZE_PHONE];
     char reqBuff[REQUEST_SIZE];
+    char tokenBuff[TOKEN_SIZE];
     UserIndex userIndex;
     float volume;
 

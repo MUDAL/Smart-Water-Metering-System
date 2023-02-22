@@ -64,9 +64,10 @@ void loop()
       uint32_t user1Recharge = mni.DecodeData(MNI::RxDataId::USER1_RECHARGE);
       uint32_t user2Recharge = mni.DecodeData(MNI::RxDataId::USER2_RECHARGE);
       uint32_t user3Recharge = mni.DecodeData(MNI::RxDataId::USER3_RECHARGE);
-      flowSensor1.UpdateVolume(user1Recharge);
-      flowSensor2.UpdateVolume(user2Recharge);
-      flowSensor3.UpdateVolume(user3Recharge);
+      //Multiply by 1000 to convert the recharged units from L to mL
+      flowSensor1.UpdateVolume(user1Recharge * 1000);
+      flowSensor2.UpdateVolume(user2Recharge * 1000);
+      flowSensor3.UpdateVolume(user3Recharge * 1000);
       
       //Debug
       Serial.print("volume 1: ");

@@ -382,6 +382,7 @@ void HMI::StateFunc_UserMenu1(void)
   char heading4[] = "";
   uint8_t unitsColumn = strlen(heading1);
   uint8_t reqColumn = strlen(heading2);
+  uint8_t tokenColumn = strlen(heading3);
   uint32_t request = 0;
   bool requestSent = false;
   
@@ -413,6 +414,7 @@ void HMI::StateFunc_UserMenu1(void)
           HMI::SetParam(reqColumn,ROW2,reqBuff,counter.request,REQUEST_SIZE);
           break;
         case ROW3:
+          HMI::SetParam(tokenColumn,ROW3,tokenBuff,counter.token,TOKEN_SIZE);
           break;
       }
       break;
@@ -420,15 +422,22 @@ void HMI::StateFunc_UserMenu1(void)
       switch(currentRow.userMenu1)
       {
         case ROW2:
-          StringToInteger(reqBuff,&request);
-          requestSent = HandleRecharge(userIndex,request);
-          memset(reqBuff,'\0',REQUEST_SIZE);
+          if(strcmp(reqBuff,""))
+          {
+            StringToInteger(reqBuff,&request);
+            requestSent = HandleRecharge(userIndex,request);
+            memset(reqBuff,'\0',REQUEST_SIZE); 
+          }
           if(requestSent)
           {
             HMI::DisplayRequestSuccess(3000);
           }
           break;
         case ROW3:
+          if(strcmp(tokenBuff,""))
+          {
+            
+          }
           break;
       }
       break;

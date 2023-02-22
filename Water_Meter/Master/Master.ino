@@ -30,18 +30,25 @@ typedef struct
 {
   char phoneNum[SIZE_PHONE];
   uint32_t units;
-}recharge_t;
+}recharge_util_t;
 
 typedef struct
 {
-  recharge_t recharge;
+  recharge_util_t recharge;
   sensor_t sensorData;
-}meter_utility_t;
+}meter_util_t;
+
+typedef struct
+{
+  UserIndex userIndex;
+  uint32_t units;
+}recharge_node_t;
 
 TaskHandle_t nodeTaskHandle;
 QueueHandle_t nodeToGetUnitsQueue;
 QueueHandle_t nodeToUtilityQueue;
 QueueHandle_t requestToUtilityQueue;
+QueueHandle_t requestToNodeQueue;
 Preferences preferences; //for accessing ESP32 flash memory
 
 void setup() 
@@ -51,7 +58,8 @@ void setup()
   preferences.begin("S-Meter",false); 
   nodeToGetUnitsQueue = xQueueCreate(1,sizeof(sensor_t));
   nodeToUtilityQueue = xQueueCreate(1,sizeof(sensor_t));
-  requestToUtilityQueue = xQueueCreate(1,sizeof(recharge_t));
+  requestToUtilityQueue = xQueueCreate(1,sizeof(recharge_util_t));
+  requestToNodeQueue = xQueueCreate(1,sizeof(recharge_node_t));
   if(nodeToGetUnitsQueue != NULL)
   {
     Serial.println("Node-GetUnits Queue successfully created");
@@ -64,6 +72,10 @@ void setup()
   {
     Serial.println("Request-Utility Queue successfully created");
   }
+  if(requestToNodeQueue != NULL)
+  {
+    Serial.println("Request-Node Queue successfully created");
+  }  
   xTaskCreatePinnedToCore(ApplicationTask,"",30000,NULL,2,NULL,1);
   xTaskCreatePinnedToCore(NodeTask,"",25000,NULL,1,&nodeTaskHandle,1);
   xTaskCreatePinnedToCore(UtilityTask,"",25000,NULL,1,NULL,1);
@@ -134,10 +146,29 @@ void NodeTask(void* pvParameters)
       
   while(1)
   {
-    //Request for sensor data from the node (periodically)
     if((millis() - prevTime) >= 2500)
     {
-      mni.EncodeData(MNI::QUERY,MNI::TxDataId::DATA_QUERY);
+      mni.EncodeData(MNI::QUERY,MNI::TxDataId::DATA_QUERY); //Request data from node
+      mni.EncodeData(0,MNI::TxDataId::USER1_RECHARGE);
+      mni.EncodeData(0,MNI::TxDataId::USER2_RECHARGE);
+      mni.EncodeData(0,MNI::TxDataId::USER3_RECHARGE);
+      /*TO-DO: Execute the block below when token has been verified*/
+//      recharge_node_t rechargeToNode = {};
+//      if(xQueueReceive(requestToNodeQueue,&rechargeToNode,0) == pdPASS)
+//      {
+//        switch(rechargeToNode.userIndex)
+//        {
+//          case USER1:
+//            mni.EncodeData(rechargeToNode.units,MNI::TxDataId::USER1_RECHARGE);
+//            break;
+//          case USER2:
+//            mni.EncodeData(rechargeToNode.units,MNI::TxDataId::USER2_RECHARGE);
+//            break;
+//          case USER3:
+//            mni.EncodeData(rechargeToNode.units,MNI::TxDataId::USER3_RECHARGE);
+//            break;
+//        }
+//      }
       mni.TransmitData();
       prevTime = millis();
     }
@@ -181,7 +212,7 @@ void UtilityTask(void* pvParameters)
   const uint8_t chipSel = 5; 
   const byte addr[][6] = {"00001","00002"};
   static RF24 nrf24(chipEn,chipSel);
-  static meter_utility_t meterToUtil;
+  static meter_util_t meterToUtil;
   
   nrf24.begin();
   nrf24.openWritingPipe(addr[1]);
@@ -362,7 +393,7 @@ bool StoreUserParam(UserIndex userIndex,UserParam paramType,
  * @param userIndex: To determine the user whose information is required.
  * @param unitsRequired: Number of units required by the user. 
  * for recharge.  
- * @return true if recharge request has been sent to the utility task. 
+ * @return true if recharge request has been sent. 
  *         false if otherwise.  
  *                                                                        
 */
@@ -373,18 +404,33 @@ bool HandleRecharge(UserIndex userIndex,uint32_t unitsRequired)
     Serial.println("Request Error: Invalid user");
     return false; //invalid index
   }   
-  bool requestSent = false; 
+  bool requestToUtilSent = false; 
+  bool requestToNodeSent = false;
   char flashLoc[2] = {0};
   flashLoc[0] = '6' + userIndex; //to get phone number's location in flash memory
-  recharge_t recharge = {};
+  recharge_util_t rechargeToUtil = {};
+  recharge_node_t rechargeToNode = {};
   
-  preferences.getBytes(flashLoc,recharge.phoneNum,SIZE_PHONE);
-  recharge.units = unitsRequired;
-  if(xQueueSend(requestToUtilityQueue,&recharge,0) == pdPASS)
+  preferences.getBytes(flashLoc,rechargeToUtil.phoneNum,SIZE_PHONE);
+  rechargeToUtil.units = unitsRequired;
+  rechargeToNode.userIndex = userIndex;
+  rechargeToNode.units = unitsRequired;
+  
+  if(xQueueSend(requestToUtilityQueue,&rechargeToUtil,0) == pdPASS)
   {
-    requestSent = true;
+    requestToUtilSent = true;
     Serial.println("Request-Util TX PASS\n");
   }
-  return requestSent;  
+  if(xQueueSend(requestToNodeQueue,&rechargeToNode,0) == pdPASS)
+  {
+    requestToNodeSent = true;
+    Serial.println("Request-Node TX PASS\n");
+  }
+  return (requestToUtilSent && requestToNodeSent);  
+}
+
+bool CompareTokens(char* tokenEnteredByUser)
+{
+  
 }
 
