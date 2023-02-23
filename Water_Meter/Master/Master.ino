@@ -238,6 +238,13 @@ void UtilityTask(void* pvParameters)
       meterToUtil.recharge.units = 0;
       prevTime = millis();
     }
+    if(nrf24.available())
+    {
+      char token[SIZE_TOKEN] = {0};
+      nrf24.read(token,SIZE_TOKEN);
+      Serial.print("token = ");
+      Serial.println(token);
+    }
   }
 }
 

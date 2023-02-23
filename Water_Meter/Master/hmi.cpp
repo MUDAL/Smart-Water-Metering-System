@@ -89,6 +89,15 @@ void HMI::SetParam(uint8_t col,uint8_t row,
   }
 }
 
+void HMI::ClearParamDisplay(uint8_t col,uint8_t row,uint8_t numOfSpaces)
+{
+  lcdPtr->setCursor(col,row);
+  for(uint8_t i = 0; i < numOfSpaces; i++)
+  {
+    lcdPtr->print(' ');
+  }
+}
+
 void HMI::DisplayParam(uint8_t col,uint8_t row,char* param,bool isHidden)
 {
   lcdPtr->setCursor(col,row);
@@ -424,6 +433,7 @@ void HMI::StateFunc_UserMenu1(void)
         case ROW2:
           if(strcmp(reqBuff,""))
           {
+            HMI::ClearParamDisplay(reqColumn,ROW2,strlen(reqBuff));
             StringToInteger(reqBuff,&request);
             requestSent = HandleRecharge(userIndex,request);
             memset(reqBuff,'\0',SIZE_REQUEST); 
@@ -437,6 +447,7 @@ void HMI::StateFunc_UserMenu1(void)
           if(strcmp(tokenBuff,""))
           {
             /*TO-DO: Code to call callback function to handle Token validation*/
+            HMI::ClearParamDisplay(tokenColumn,ROW3,strlen(tokenBuff));
           }
           break;
       }

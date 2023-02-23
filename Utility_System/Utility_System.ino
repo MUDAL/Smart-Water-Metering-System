@@ -8,7 +8,9 @@
 #include "sim800l.h"
 
 #define SIZE_TOPIC            30 //MQTT topic: Max number of characters
-#define SIZE_PHONE            12
+//Number of characters (including NULL)
+#define SIZE_PHONE            12 
+#define SIZE_TOKEN            11 
 
 //Meter(Master) -> Utility
 typedef struct
@@ -40,6 +42,7 @@ WiFiManagerParameter subTopic("5","HiveMQ Subscription topic","",SIZE_TOPIC);
 Preferences preferences; //for accessing ESP32 flash memory
 queue_t queue;
 TaskHandle_t wifiTaskHandle;
+uint32_t setupTime;
 
 /**
  * @brief Store new data in specified location in ESP32's 
@@ -55,13 +58,36 @@ static void StoreNewFlashData(const char* flashLoc,const char* newData,
 }
 
 /**
+ * @brief Generates token using a Random Number Generator  
+ * (RNG).
+*/
+static void RandomizeToken(char* token)
+{
+  static bool isRngReady = false; //to setup RNG
+  const char chars[] = "0123456789*ABCD";
+  uint8_t len = strlen(chars);
+
+  if(!isRngReady)
+  {
+    randomSeed(micros() - setupTime);
+    isRngReady = true;
+  }
+  for(uint8_t i = 0; i < SIZE_TOKEN - 1; i++)
+  {
+    uint8_t randIndex = random(len);
+    token[i] = chars[randIndex];
+  }
+  token[SIZE_TOKEN - 1] = '\0';
+}
+
+/**
  * @brief Send auto-generated token to the meter of the user that 
  * just sent a request to recharge.
 */
-static void SendTokenToMeter(RF24& nrf24)
+static void SendTokenToMeter(RF24& nrf24,char* token)
 {
   nrf24.stopListening();
-  //TO-DO: Add code to send the token
+  nrf24.write(token,SIZE_TOKEN);
   nrf24.startListening();
 }
 
@@ -81,6 +107,7 @@ void setup()
   xTaskCreatePinnedToCore(MqttTask,"",7000,NULL,1,NULL,1);
   xTaskCreatePinnedToCore(ApplicationTask,"",20000,NULL,1,NULL,1); 
   xTaskCreatePinnedToCore(MeterTask,"",20000,NULL,1,NULL,1);  
+  setupTime = micros();
 }
 
 void loop() 
@@ -192,7 +219,7 @@ void MqttTask(void* pvParameters)
 */
 void ApplicationTask(void* pvParameters)
 {
-  static SIM800L gsm(&Serial2,9600);
+  static SIM800L gsm(&Serial2);
   bool isWifiTaskSuspended = false;
   
   while(1)
@@ -250,8 +277,12 @@ void MeterTask(void* pvParameters)
       if(strcmp(meterToUtil.recharge.phoneNum,"") && 
         (meterToUtil.recharge.units > 0))
       {
-        SendTokenToMeter(nrf24);
-        /*TO-DO: Add code to send phone number to App task via a Queue*/
+        char token[SIZE_TOKEN] = {0};
+        RandomizeToken(token);
+        SendTokenToMeter(nrf24,token);
+        Serial.print("token = ");
+        Serial.println(token);
+        /*TO-DO: Add code to send phone number and token to App task via a Queue*/
       }
     }
   }

@@ -10,6 +10,7 @@ enum UserIndex
 enum UserParam {ID = 0, PIN, PHONE};
 enum ParamSize {SIZE_ID = 11, SIZE_PIN = 11, SIZE_PHONE = 12};
 enum BufferSize {SIZE_REQUEST = 11, SIZE_TOKEN = 11};
+/*NB: The Param and Buffer sizes include NULL*/
 
 class HMI
 {
@@ -66,6 +67,7 @@ class HMI
     void SetParam(uint8_t col,uint8_t row,
                   char* param,uint8_t& counterRef,
                   uint8_t paramSize,bool isHidden = false);
+    void ClearParamDisplay(uint8_t col,uint8_t row,uint8_t numOfSpaces);
     void DisplayParam(uint8_t col,uint8_t row,char* param,bool isHidden = false);
     void DisplayPageNumber(uint8_t row,uint8_t currentPage,uint8_t lastPage);
     void DisplayHelpPage1(void);
