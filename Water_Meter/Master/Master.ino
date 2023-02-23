@@ -469,6 +469,7 @@ bool VerifyToken(UserIndex userIndex,char* tokenEnteredByUser)
   }
   bool isTokenCorrect = false;  
   char token[SIZE_TOKEN] = {0};
+  
   if(xQueueReceive(queue.utilToToken,token,0) == pdPASS)
   {
     Serial.println("Util-Token RX PASS\n");  
