@@ -51,6 +51,7 @@ typedef struct
   QueueHandle_t rechargeToUtil;
   QueueHandle_t rechargeToNode;  
   QueueHandle_t utilToToken;
+  QueueHandle_t tokenToNode;
 }queue_t;
 
 queue_t queue;
@@ -67,10 +68,11 @@ void setup()
   queue.rechargeToUtil = xQueueCreate(1,sizeof(recharge_util_t));
   queue.rechargeToNode = xQueueCreate(1,sizeof(recharge_node_t));
   queue.utilToToken = xQueueCreate(1,SIZE_TOKEN * sizeof(char));
+  queue.tokenToNode = xQueueCreate(1,sizeof(bool));
   
   if(queue.nodeToGetUnits != NULL && queue.nodeToUtil != NULL &&
      queue.rechargeToUtil != NULL && queue.rechargeToNode != NULL &&
-     queue.utilToToken != NULL)
+     queue.utilToToken != NULL && queue.tokenToNode)
   {
     Serial.println("Queues successfully created");
   }
@@ -102,6 +104,7 @@ void ApplicationTask(void* pvParameters)
   hmi.RegisterCallback(GetUnits);
   hmi.RegisterCallback(StoreUserParam);
   hmi.RegisterCallback(HandleRecharge);
+  hmi.RegisterCallback(VerifyToken);
   
   //Startup message
   lcd.init();
@@ -137,6 +140,8 @@ void NodeTask(void* pvParameters)
   vTaskSuspend(NULL);
   static MNI mni(&Serial2);
   static sensor_t sensorData;
+  bool isTokenCorrect = false;
+  recharge_node_t rechargeToNode = {};  
   //Initial request for sensor data from the node
   mni.EncodeData(MNI::QUERY,MNI::TxDataId::DATA_QUERY);
   mni.TransmitData();  
@@ -146,27 +151,36 @@ void NodeTask(void* pvParameters)
   {
     if((millis() - prevTime) >= 2500)
     {
-      mni.EncodeData(MNI::QUERY,MNI::TxDataId::DATA_QUERY); //Request data from node
+      mni.EncodeData(MNI::QUERY,MNI::TxDataId::DATA_QUERY); 
       mni.EncodeData(0,MNI::TxDataId::USER1_RECHARGE);
       mni.EncodeData(0,MNI::TxDataId::USER2_RECHARGE);
       mni.EncodeData(0,MNI::TxDataId::USER3_RECHARGE);
-      /*TO-DO: Execute the block below when token has been verified*/
-//      recharge_node_t rechargeToNode = {};
-//      if(xQueueReceive(queue.rechargeToNode,&rechargeToNode,0) == pdPASS)
-//      {
-//        switch(rechargeToNode.userIndex)
-//        {
-//          case USER1:
-//            mni.EncodeData(rechargeToNode.units,MNI::TxDataId::USER1_RECHARGE);
-//            break;
-//          case USER2:
-//            mni.EncodeData(rechargeToNode.units,MNI::TxDataId::USER2_RECHARGE);
-//            break;
-//          case USER3:
-//            mni.EncodeData(rechargeToNode.units,MNI::TxDataId::USER3_RECHARGE);
-//            break;
-//        }
-//      }
+      if(xQueueReceive(queue.tokenToNode,&isTokenCorrect,0) == pdPASS)
+      {
+        Serial.println("Token-Node RX PASS\n");
+      }
+      if(xQueueReceive(queue.rechargeToNode,&rechargeToNode,0) == pdPASS)
+      {
+        Serial.println("Request-Node RX PASS\n");   
+      }
+      if(isTokenCorrect)
+      {
+        switch(rechargeToNode.userIndex)
+        {
+          case USER1:
+            mni.EncodeData(rechargeToNode.units,MNI::TxDataId::USER1_RECHARGE);
+            break;
+          case USER2:
+            mni.EncodeData(rechargeToNode.units,MNI::TxDataId::USER2_RECHARGE);
+            break;
+          case USER3:
+            mni.EncodeData(rechargeToNode.units,MNI::TxDataId::USER3_RECHARGE);
+            break;
+        }
+        rechargeToNode.units = 0;
+        rechargeToNode.userIndex = USER_UNKNOWN;
+        isTokenCorrect = false;
+      }
       mni.TransmitData();
       prevTime = millis();
     }
@@ -244,6 +258,10 @@ void UtilityTask(void* pvParameters)
       nrf24.read(token,SIZE_TOKEN);
       Serial.print("token = ");
       Serial.println(token);
+      if(xQueueSend(queue.utilToToken,token,0) == pdPASS)
+      {
+        Serial.println("Util-Token TX PASS\n");
+      }
     }
   }
 }
@@ -434,8 +452,36 @@ bool HandleRecharge(UserIndex userIndex,uint32_t unitsRequired)
   return (isSentToUtil && isSentToNode);  
 }
 
-bool CompareTokens(char* tokenEnteredByUser)
+/**
+ * @brief Callback function that is called when the user  
+ * enters a token (via the HMI) in order to recharge. It  
+ * checks the correctness of the token.
+ * 
+ * @return true if token entered by the user is correct.
+ *         false if otherwise.
+*/
+bool VerifyToken(UserIndex userIndex,char* tokenEnteredByUser)
 {
-  
+  if(userIndex == USER_UNKNOWN)
+  {
+    Serial.println("Token Verification Error: Invalid user");
+    return false; //invalid index
+  }
+  bool isTokenCorrect = false;  
+  char token[SIZE_TOKEN] = {0};
+  if(xQueueReceive(queue.utilToToken,token,0) == pdPASS)
+  {
+    Serial.println("Util-Token RX PASS\n");  
+  }
+  if(!strcmp(tokenEnteredByUser,token))
+  {
+    isTokenCorrect = true;
+    Serial.println("Token: Correct");
+  }
+  if(xQueueSend(queue.tokenToNode,&isTokenCorrect,0) == pdPASS)
+  {
+    Serial.println("Token-Node TX PASS\n");
+  }
+  return isTokenCorrect;
 }
 

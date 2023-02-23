@@ -25,6 +25,7 @@ class HMI
     };
     enum Row {ROW1, ROW2, ROW3, ROW4};
     enum Page {PAGE1 = 1, PAGE2, PAGE3, PAGE4};
+    enum TokenStatus {TOKEN_FAIL, TOKEN_PASS};
     typedef struct
     {
       uint8_t mainMenu;
@@ -62,7 +63,7 @@ class HMI
     void(*GetUnits)(UserIndex,float*);
     bool(*StoreUserParam)(UserIndex,UserParam,char*,uint8_t);
     bool(*HandleRecharge)(UserIndex,uint32_t);
-    
+    bool(*VerifyToken)(UserIndex,char*);
     //Methods
     void SetParam(uint8_t col,uint8_t row,
                   char* param,uint8_t& counterRef,
@@ -80,6 +81,8 @@ class HMI
     void DisplaySaveSuccess(char* infoToDisplayAfterSave,
                             uint32_t displayPeriodMillis);
     void DisplayRequestSuccess(uint32_t displayPeriodMillis);
+    void DisplayTokenStatus(TokenStatus tokenStatus,
+                            uint32_t displayPeriodMillis);
     void PointToRow(char* heading1,char* heading2,
                     char* heading3,char* heading4,
                     uint8_t row);
@@ -98,5 +101,6 @@ class HMI
     void RegisterCallback(void(*GetUnits)(UserIndex,float*));
     void RegisterCallback(bool(*StoreUserParam)(UserIndex,UserParam,char*,uint8_t));
     void RegisterCallback(bool(*HandleRecharge)(UserIndex,uint32_t));
+    void RegisterCallback(bool(*VerifyToken)(UserIndex,char*));
 };
 

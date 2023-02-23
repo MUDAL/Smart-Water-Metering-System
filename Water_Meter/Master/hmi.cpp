@@ -264,6 +264,33 @@ void HMI::DisplayRequestSuccess(uint32_t displayPeriodMillis)
   lcdPtr->clear();  
 }
 
+void HMI::DisplayTokenStatus(TokenStatus tokenStatus,
+                             uint32_t displayPeriodMillis)
+{
+  lcdPtr->clear();
+  switch(tokenStatus)
+  {
+    case TOKEN_FAIL:
+      lcdPtr->print("YOU ENTERED AN");
+      lcdPtr->setCursor(0,ROW2);
+      lcdPtr->print("INCORRECT TOKEN.");
+      lcdPtr->setCursor(0,ROW3);
+      lcdPtr->print("KINDLY CONTACT THE");
+      lcdPtr->setCursor(0,ROW4);
+      lcdPtr->print("UTILITY.");
+      break;
+    case TOKEN_PASS:
+      lcdPtr->print("CONGRATS, YOUR");
+      lcdPtr->setCursor(0,ROW2);
+      lcdPtr->print("UNITS HAVE BEEN");
+      lcdPtr->setCursor(0,ROW3);
+      lcdPtr->print("INCREASED.");
+      break;
+  }
+  vTaskDelay(pdMS_TO_TICKS(displayPeriodMillis));
+  lcdPtr->clear();   
+}
+
 void HMI::PointToRow(char* heading1,char* heading2,
                      char* heading3,char* heading4,
                      uint8_t row)
@@ -446,8 +473,15 @@ void HMI::StateFunc_UserMenu1(void)
         case ROW3:
           if(strcmp(tokenBuff,""))
           {
-            /*TO-DO: Code to call callback function to handle Token validation*/
             HMI::ClearParamDisplay(tokenColumn,ROW3,strlen(tokenBuff));
+            if(VerifyToken(userIndex,tokenBuff))
+            {
+              HMI::DisplayTokenStatus(TOKEN_PASS,2000);
+            }
+            else
+            {
+              HMI::DisplayTokenStatus(TOKEN_FAIL,2500);
+            }
           }
           break;
       }
@@ -640,5 +674,11 @@ void HMI::RegisterCallback(bool(*HandleRecharge)(UserIndex,uint32_t))
 {
   Serial.println("Registered {HandleRecharge} callback");
   this->HandleRecharge = HandleRecharge;   
+}
+
+void HMI::RegisterCallback(bool(*VerifyToken)(UserIndex,char*))
+{
+  Serial.println("Registered {VerifyToken} callback");
+  this->VerifyToken = VerifyToken;   
 }
 
