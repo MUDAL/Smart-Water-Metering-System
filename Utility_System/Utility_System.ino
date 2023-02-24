@@ -10,7 +10,7 @@
 #define SIZE_TOPIC            30 //MQTT topic: Max number of characters
 //Number of characters (including NULL)
 #define SIZE_PHONE            12 
-#define SIZE_TOKEN            11 
+#define SIZE_OTP              11 
 
 //Meter(Master) -> Utility
 typedef struct
@@ -58,10 +58,10 @@ static void StoreNewFlashData(const char* flashLoc,const char* newData,
 }
 
 /**
- * @brief Generates token using a Random Number Generator  
+ * @brief Generates OTP using a Random Number Generator  
  * (RNG).
 */
-static void RandomizeToken(char* token)
+static void RandomizeOtp(char* otp)
 {
   static bool isRngReady = false; //to setup RNG
   const char chars[] = "0123456789*ABCD";
@@ -72,22 +72,22 @@ static void RandomizeToken(char* token)
     randomSeed(micros() - setupTime);
     isRngReady = true;
   }
-  for(uint8_t i = 0; i < SIZE_TOKEN - 1; i++)
+  for(uint8_t i = 0; i < SIZE_OTP - 1; i++)
   {
     uint8_t randIndex = random(len);
-    token[i] = chars[randIndex];
+    otp[i] = chars[randIndex];
   }
-  token[SIZE_TOKEN - 1] = '\0';
+  otp[SIZE_OTP - 1] = '\0';
 }
 
 /**
- * @brief Send auto-generated token to the meter of the user that 
+ * @brief Send auto-generated OTP to the meter of the user that 
  * just sent a request to recharge.
 */
-static void SendTokenToMeter(RF24& nrf24,char* token)
+static void SendOtpToMeter(RF24& nrf24,char* otp)
 {
   nrf24.stopListening();
-  nrf24.write(token,SIZE_TOKEN);
+  nrf24.write(otp,SIZE_OTP);
   nrf24.startListening();
 }
 
@@ -277,12 +277,12 @@ void MeterTask(void* pvParameters)
       if(strcmp(meterToUtil.recharge.phoneNum,"") && 
         (meterToUtil.recharge.units > 0))
       {
-        char token[SIZE_TOKEN] = {0};
-        RandomizeToken(token);
-        SendTokenToMeter(nrf24,token);
-        Serial.print("token = ");
-        Serial.println(token);
-        /*TO-DO: Add code to send phone number and token to App task via a Queue*/
+        char otp[SIZE_OTP] = {0};
+        RandomizeOtp(otp);
+        SendOtpToMeter(nrf24,otp);
+        Serial.print("OTP = ");
+        Serial.println(otp);
+        /*TO-DO: Add code to send phone number and otp to App task via a Queue*/
       }
     }
   }

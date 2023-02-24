@@ -12,9 +12,9 @@ Functions of the meter:
 3. Enables recharging of units via requests to the utility    
 
 Functions of the utility:  
-1. Generates token required to recharge units   
-2. Sends token:  
-	a. via SMS to the user  
+1. Generates an OTP required to recharge units   
+2. Sends the OTP:  
+	a. via SMS to the user's phone   
 	b. wirelessly to the meter  
 3. Sends current user's current units to the cloud.  
 

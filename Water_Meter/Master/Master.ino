@@ -50,8 +50,8 @@ typedef struct
   QueueHandle_t nodeToUtil;
   QueueHandle_t rechargeToUtil;
   QueueHandle_t rechargeToNode;  
-  QueueHandle_t utilToToken;
-  QueueHandle_t tokenToNode;
+  QueueHandle_t utilToOtp;
+  QueueHandle_t otpToNode;
 }queue_t;
 
 queue_t queue;
@@ -67,12 +67,12 @@ void setup()
   queue.nodeToUtil = xQueueCreate(1,sizeof(sensor_t));
   queue.rechargeToUtil = xQueueCreate(1,sizeof(recharge_util_t));
   queue.rechargeToNode = xQueueCreate(1,sizeof(recharge_node_t));
-  queue.utilToToken = xQueueCreate(1,SIZE_TOKEN * sizeof(char));
-  queue.tokenToNode = xQueueCreate(1,sizeof(bool));
+  queue.utilToOtp = xQueueCreate(1,SIZE_OTP * sizeof(char));
+  queue.otpToNode = xQueueCreate(1,sizeof(bool));
   
   if(queue.nodeToGetUnits != NULL && queue.nodeToUtil != NULL &&
      queue.rechargeToUtil != NULL && queue.rechargeToNode != NULL &&
-     queue.utilToToken != NULL && queue.tokenToNode)
+     queue.utilToOtp != NULL && queue.otpToNode)
   {
     Serial.println("Queues successfully created");
   }
@@ -104,7 +104,7 @@ void ApplicationTask(void* pvParameters)
   hmi.RegisterCallback(GetUnits);
   hmi.RegisterCallback(StoreUserParam);
   hmi.RegisterCallback(HandleRecharge);
-  hmi.RegisterCallback(VerifyToken);
+  hmi.RegisterCallback(VerifyOtp);
   
   //Startup message
   lcd.init();
@@ -140,7 +140,7 @@ void NodeTask(void* pvParameters)
   vTaskSuspend(NULL);
   static MNI mni(&Serial2);
   static sensor_t sensorData;
-  bool isTokenCorrect = false;
+  bool isOtpCorrect = false;
   recharge_node_t rechargeToNode = {};  
   //Initial request for sensor data from the node
   mni.EncodeData(MNI::QUERY,MNI::TxDataId::DATA_QUERY);
@@ -155,15 +155,15 @@ void NodeTask(void* pvParameters)
       mni.EncodeData(0,MNI::TxDataId::USER1_RECHARGE);
       mni.EncodeData(0,MNI::TxDataId::USER2_RECHARGE);
       mni.EncodeData(0,MNI::TxDataId::USER3_RECHARGE);
-      if(xQueueReceive(queue.tokenToNode,&isTokenCorrect,0) == pdPASS)
+      if(xQueueReceive(queue.otpToNode,&isOtpCorrect,0) == pdPASS)
       {
-        Serial.println("Token-Node RX PASS\n");
+        Serial.println("OTP-Node RX PASS\n");
       }
       if(xQueueReceive(queue.rechargeToNode,&rechargeToNode,0) == pdPASS)
       {
         Serial.println("Request-Node RX PASS\n");   
       }
-      if(isTokenCorrect)
+      if(isOtpCorrect)
       {
         switch(rechargeToNode.userIndex)
         {
@@ -179,7 +179,7 @@ void NodeTask(void* pvParameters)
         }
         rechargeToNode.units = 0;
         rechargeToNode.userIndex = USER_UNKNOWN;
-        isTokenCorrect = false;
+        isOtpCorrect = false;
       }
       mni.TransmitData();
       prevTime = millis();
@@ -242,25 +242,24 @@ void UtilityTask(void* pvParameters)
     {
       Serial.println("Request-Util RX PASS\n");
     }
-    if((millis() - prevTime) >= 3000)
+    if((millis() - prevTime) >= 1000)
     {
       nrf24.stopListening();
       nrf24.write(&meterToUtil,sizeof(meterToUtil)); 
       nrf24.startListening();
-      //Clear phone number and units required
       memset(meterToUtil.recharge.phoneNum,'\0',SIZE_PHONE);
       meterToUtil.recharge.units = 0;
       prevTime = millis();
     }
     if(nrf24.available())
     {
-      char token[SIZE_TOKEN] = {0};
-      nrf24.read(token,SIZE_TOKEN);
-      Serial.print("token = ");
-      Serial.println(token);
-      if(xQueueSend(queue.utilToToken,token,0) == pdPASS)
+      char otp[SIZE_OTP] = {0};
+      nrf24.read(otp,SIZE_OTP);
+      Serial.print("otp = ");
+      Serial.println(otp);
+      if(xQueueSend(queue.utilToOtp,otp,0) == pdPASS)
       {
-        Serial.println("Util-Token TX PASS\n");
+        Serial.println("Util-OTP TX PASS\n");
       }
     }
   }
@@ -454,35 +453,39 @@ bool HandleRecharge(UserIndex userIndex,uint32_t unitsRequired)
 
 /**
  * @brief Callback function that is called when the user  
- * enters a token (via the HMI) in order to recharge. It  
- * checks the correctness of the token.
+ * enters an OTP (via the HMI) in order to recharge. It  
+ * checks the correctness of the OTP.
  * 
- * @return true if token entered by the user is correct.
+ * If the user enters a wrong OTP, the user will have to
+ * make a new request and enter a new OTP as the old one
+ * would no longer be valid.
+ * 
+ * @return true if OTP entered by the user is correct.
  *         false if otherwise.
 */
-bool VerifyToken(UserIndex userIndex,char* tokenEnteredByUser)
+bool VerifyOtp(UserIndex userIndex,char* otpEnteredByUser)
 {
   if(userIndex == USER_UNKNOWN)
   {
-    Serial.println("Token Verification Error: Invalid user");
+    Serial.println("OTP Verification Error: Invalid user");
     return false; //invalid index
   }
-  bool isTokenCorrect = false;  
-  char token[SIZE_TOKEN] = {0};
+  bool isOtpCorrect = false;  
+  char otp[SIZE_OTP] = {0};
   
-  if(xQueueReceive(queue.utilToToken,token,0) == pdPASS)
+  if(xQueueReceive(queue.utilToOtp,otp,0) == pdPASS)
   {
-    Serial.println("Util-Token RX PASS\n");  
+    Serial.println("Util-OTP RX PASS\n");  
   }
-  if(!strcmp(tokenEnteredByUser,token))
+  if(!strcmp(otpEnteredByUser,otp))
   {
-    isTokenCorrect = true;
-    Serial.println("Token: Correct");
+    isOtpCorrect = true;
+    Serial.println("OTP: Correct");
   }
-  if(xQueueSend(queue.tokenToNode,&isTokenCorrect,0) == pdPASS)
+  if(xQueueSend(queue.otpToNode,&isOtpCorrect,0) == pdPASS)
   {
-    Serial.println("Token-Node TX PASS\n");
+    Serial.println("OTP-Node TX PASS\n");
   }
-  return isTokenCorrect;
+  return isOtpCorrect;
 }
 

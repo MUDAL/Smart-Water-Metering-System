@@ -157,7 +157,7 @@ void HMI::DisplayHelpPage3(void)
   lcdPtr->setCursor(0,ROW3);
   lcdPtr->print("you will get an SMS.");
   lcdPtr->setCursor(0,ROW4);
-  lcdPtr->print("Enter the token.");  
+  lcdPtr->print("Enter the OTP.");  
 }
 
 void HMI::DisplayHelpPage4(void)
@@ -259,27 +259,27 @@ void HMI::DisplayRequestSuccess(uint32_t displayPeriodMillis)
   lcdPtr->setCursor(0,ROW3);
   lcdPtr->print("UTILITY. WAIT FOR");
   lcdPtr->setCursor(0,ROW4);
-  lcdPtr->print("YOUR TOKEN (SMS). ");
+  lcdPtr->print("YOUR OTP (SMS). ");
   vTaskDelay(pdMS_TO_TICKS(displayPeriodMillis));
   lcdPtr->clear();  
 }
 
-void HMI::DisplayTokenStatus(TokenStatus tokenStatus,
-                             uint32_t displayPeriodMillis)
+void HMI::DisplayOtpStatus(OtpStatus otpStatus,
+                           uint32_t displayPeriodMillis)
 {
   lcdPtr->clear();
-  switch(tokenStatus)
+  switch(otpStatus)
   {
-    case TOKEN_FAIL:
+    case OTP_FAIL:
       lcdPtr->print("YOU ENTERED AN");
       lcdPtr->setCursor(0,ROW2);
-      lcdPtr->print("INCORRECT TOKEN.");
+      lcdPtr->print("INCORRECT OTP.");
       lcdPtr->setCursor(0,ROW3);
       lcdPtr->print("KINDLY CONTACT THE");
       lcdPtr->setCursor(0,ROW4);
       lcdPtr->print("UTILITY.");
       break;
-    case TOKEN_PASS:
+    case OTP_PASS:
       lcdPtr->print("CONGRATS, YOUR");
       lcdPtr->setCursor(0,ROW2);
       lcdPtr->print("UNITS HAVE BEEN");
@@ -414,13 +414,14 @@ void HMI::StateFunc_UserMenu1(void)
 {
   char heading1[] = "  UNITS:";
   char heading2[] = "  REQUEST:";
-  char heading3[] = "  TOKEN:"; 
+  char heading3[] = "  OTP:"; 
   char heading4[] = "";
   uint8_t unitsColumn = strlen(heading1);
   uint8_t reqColumn = strlen(heading2);
-  uint8_t tokenColumn = strlen(heading3);
+  uint8_t otpColumn = strlen(heading3);
   uint32_t request = 0;
   bool requestSent = false;
+  bool isOtpCorrect = false;
   
   HMI::PointToRow(heading1,heading2,
                   heading3,heading4,
@@ -450,7 +451,7 @@ void HMI::StateFunc_UserMenu1(void)
           HMI::SetParam(reqColumn,ROW2,reqBuff,counter.request,SIZE_REQUEST);
           break;
         case ROW3:
-          HMI::SetParam(tokenColumn,ROW3,tokenBuff,counter.token,SIZE_TOKEN);
+          HMI::SetParam(otpColumn,ROW3,otpBuff,counter.otp,SIZE_OTP);
           break;
       }
       break;
@@ -460,10 +461,10 @@ void HMI::StateFunc_UserMenu1(void)
         case ROW2:
           if(strcmp(reqBuff,""))
           {
-            HMI::ClearParamDisplay(reqColumn,ROW2,strlen(reqBuff));
             StringToInteger(reqBuff,&request);
             requestSent = HandleRecharge(userIndex,request);
             memset(reqBuff,'\0',SIZE_REQUEST); 
+            HMI::ClearParamDisplay(reqColumn,ROW2,strlen(reqBuff));
           }
           if(requestSent)
           {
@@ -471,16 +472,18 @@ void HMI::StateFunc_UserMenu1(void)
           }
           break;
         case ROW3:
-          if(strcmp(tokenBuff,""))
+          if(strcmp(otpBuff,""))
           {
-            HMI::ClearParamDisplay(tokenColumn,ROW3,strlen(tokenBuff));
-            if(VerifyToken(userIndex,tokenBuff))
+            isOtpCorrect = VerifyOtp(userIndex,otpBuff);
+            memset(otpBuff,'\0',SIZE_OTP);
+            HMI::ClearParamDisplay(otpColumn,ROW3,strlen(otpBuff));
+            if(isOtpCorrect)
             {
-              HMI::DisplayTokenStatus(TOKEN_PASS,2000);
+              HMI::DisplayOtpStatus(OTP_PASS,2000);
             }
             else
             {
-              HMI::DisplayTokenStatus(TOKEN_FAIL,2500);
+              HMI::DisplayOtpStatus(OTP_FAIL,2500);
             }
           }
           break;
@@ -614,12 +617,12 @@ HMI::HMI(LiquidCrystal_I2C* lcdPtr,Keypad* keypadPtr)
   counter.pin = 0;
   counter.phoneNum = 0;
   counter.request = 0;
-  counter.token = 0;
+  counter.otp = 0;
   memset(id,'\0',SIZE_ID);
   memset(pin,'\0',SIZE_PIN);
   memset(phoneNum,'\0',SIZE_PHONE);
   memset(reqBuff,'\0',SIZE_REQUEST);
-  memset(tokenBuff,'\0',SIZE_TOKEN);
+  memset(otpBuff,'\0',SIZE_OTP);
   userIndex = USER_UNKNOWN; 
   volume = 0;
 }
@@ -676,9 +679,9 @@ void HMI::RegisterCallback(bool(*HandleRecharge)(UserIndex,uint32_t))
   this->HandleRecharge = HandleRecharge;   
 }
 
-void HMI::RegisterCallback(bool(*VerifyToken)(UserIndex,char*))
+void HMI::RegisterCallback(bool(*VerifyOtp)(UserIndex,char*))
 {
-  Serial.println("Registered {VerifyToken} callback");
-  this->VerifyToken = VerifyToken;   
+  Serial.println("Registered {VerifyOtp} callback");
+  this->VerifyOtp = VerifyOtp;   
 }
 
