@@ -64,6 +64,7 @@ class HMI
     bool(*StoreUserParam)(UserIndex,UserParam,char*,uint8_t);
     bool(*HandleRecharge)(UserIndex,uint32_t);
     bool(*VerifyOtp)(UserIndex,char*);
+		
     //Methods
     void SetParam(uint8_t col,uint8_t row,
                   char* param,uint8_t& counterRef,
