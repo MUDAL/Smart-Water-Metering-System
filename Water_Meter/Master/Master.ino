@@ -67,12 +67,12 @@ void setup()
   queue.nodeToUtil = xQueueCreate(1,sizeof(sensor_t));
   queue.rechargeToUtil = xQueueCreate(1,sizeof(recharge_util_t));
   queue.rechargeToNode = xQueueCreate(1,sizeof(recharge_node_t));
-  queue.utilToOtp = xQueueCreate(1,SIZE_OTP * sizeof(char));
+  queue.utilToOtp = xQueueCreate(1,SIZE_OTP);
   queue.otpToNode = xQueueCreate(1,sizeof(bool));
   
   if(queue.nodeToGetUnits != NULL && queue.nodeToUtil != NULL &&
      queue.rechargeToUtil != NULL && queue.rechargeToNode != NULL &&
-     queue.utilToOtp != NULL && queue.otpToNode)
+     queue.utilToOtp != NULL && queue.otpToNode != NULL)
   {
     Serial.println("Queues successfully created");
   }
@@ -255,7 +255,7 @@ void UtilityTask(void* pvParameters)
     {
       char otp[SIZE_OTP] = {0};
       nrf24.read(otp,SIZE_OTP);
-      Serial.print("otp = ");
+      Serial.print("OTP = ");
       Serial.println(otp);
       if(xQueueSend(queue.utilToOtp,otp,0) == pdPASS)
       {
