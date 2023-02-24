@@ -11,6 +11,7 @@
 //Number of characters (including NULL)
 #define SIZE_PHONE            12 
 #define SIZE_OTP              11 
+#define SIZE_REQUEST          11 //for units requested by the user
 
 //Meter(Master) -> Utility
 typedef struct
@@ -35,7 +36,8 @@ typedef struct
 typedef struct
 {
   QueueHandle_t utilToMqtt;
-  QueueHandle_t utilToApp;
+  QueueHandle_t utilToApp1;
+  QueueHandle_t utilToApp2;
 }queue_t;
 
 WiFiManagerParameter subTopic("5","HiveMQ Subscription topic","",SIZE_TOPIC);
@@ -91,6 +93,32 @@ static void SendOtpToMeter(RF24& nrf24,char* otp)
   nrf24.startListening();
 }
 
+/**
+ * @brief Converts an integer to a string.
+*/
+static void IntegerToString(uint32_t integer,char* stringPtr)
+{
+  if(integer == 0)
+  {  
+    stringPtr[0] = '0';
+    return;
+  }
+  uint32_t integerCopy = integer;
+  uint8_t numOfDigits = 0;
+
+  while(integerCopy > 0)
+  {
+    integerCopy /= 10;
+    numOfDigits++;
+  }
+  while(integer > 0)
+  {
+    stringPtr[numOfDigits - 1] = '0' + (integer % 10);
+    integer /= 10;
+    numOfDigits--;
+  }
+}
+
 void setup() 
 {
   // put your setup code here, to run once:
@@ -98,8 +126,9 @@ void setup()
   Serial.begin(115200);  
   preferences.begin("Utility",false);
   queue.utilToMqtt = xQueueCreate(1,sizeof(sensor_t));
-  queue.utilToApp = xQueueCreate(1,sizeof(recharge_util_t));
-  if(queue.utilToMqtt != NULL && queue.utilToApp != NULL)
+  queue.utilToApp1 = xQueueCreate(1,sizeof(recharge_util_t));
+  queue.utilToApp2 = xQueueCreate(1,SIZE_OTP);
+  if(queue.utilToMqtt != NULL && queue.utilToApp1 != NULL && queue.utilToApp2 != NULL)
   {
     Serial.println("Queues successfully created");
   }  
@@ -228,6 +257,8 @@ void ApplicationTask(void* pvParameters)
 {
   static SIM800L gsm(&Serial2);
   bool isWifiTaskSuspended = false;
+  recharge_util_t recharge = {};
+  char otp[SIZE_OTP] = {0};
   
   while(1)
   {
@@ -244,7 +275,46 @@ void ApplicationTask(void* pvParameters)
       Serial.println("WIFI TASK: RESUMED");
       vTaskResume(wifiTaskHandle);
       isWifiTaskSuspended = false;
-    }  
+    }
+    //Receive recharge details (phone number & units) from Utility task
+    if(xQueueReceive(queue.utilToApp1,&recharge,0) == pdPASS)
+    {
+      Serial.println("Util-App recharge RX PASS\n");
+    }
+    //Receive OTP from Utility task
+    if(xQueueReceive(queue.utilToApp2,otp,0) == pdPASS)
+    {
+      Serial.println("Util-App OTP RX PASS\n");
+    }
+    //Send SMS containing OTP and units to the user
+    if(strcmp(recharge.phoneNum,"") && recharge.units > 0 && strcmp(otp,""))
+    { 
+      const char msg1[] = "OTP for a recharge of ";
+      const char msg2[] = " units is: ";      
+      char unitsStr[SIZE_REQUEST] = {0};
+      IntegerToString(recharge.units,unitsStr);
+      
+      //Structuring the SMS to be sent to the user
+      uint8_t msgSize = strlen(msg1) + strlen(unitsStr) + strlen(msg2) + SIZE_OTP;
+      char message[msgSize] = {0};      
+      strcat(message,msg1);
+      strcat(message,unitsStr);
+      strcat(message,msg2);
+      strcat(message,otp);
+
+      char ccPhoneNum[SIZE_PHONE + 3] = "+234"; //country code (+234:NG)
+      strcpy(ccPhoneNum + 4,recharge.phoneNum + 1);
+      gsm.SendSMS(ccPhoneNum,message);
+
+      Serial.print("MESSAGE: ");
+      Serial.println(message);
+      Serial.print("CC PHONE: ");
+      Serial.println(ccPhoneNum);
+      
+      memset(recharge.phoneNum,'\0',SIZE_PHONE);
+      recharge.units = 0;
+      memset(otp,'\0',SIZE_OTP);
+    }
   }
 }
 
@@ -285,15 +355,23 @@ void MeterTask(void* pvParameters)
       {
         Serial.println("Util-MQTT TX PASS\n");
       }
-      if(strcmp(meterToUtil.recharge.phoneNum,"") && 
-        (meterToUtil.recharge.units > 0))
+      if(strcmp(meterToUtil.recharge.phoneNum,"") && (meterToUtil.recharge.units > 0))
       {
         char otp[SIZE_OTP] = {0};
         RandomizeOtp(otp);
         SendOtpToMeter(nrf24,otp);
         Serial.print("OTP = ");
         Serial.println(otp);
-        /*TO-DO: Add code to send phone number and OTP to App task via a Queue*/
+        //Send recharge details (phone number & units) to App task
+        if(xQueueSend(queue.utilToApp1,&meterToUtil.recharge,0) == pdPASS)
+        {
+          Serial.println("Util-App recharge TX PASS\n");
+        }
+        //Send OTP to App task
+        if(xQueueSend(queue.utilToApp2,otp,0) == pdPASS)
+        {
+          Serial.println("Util-App OTP TX PASS\n");
+        }
       }
     }
   }
