@@ -182,7 +182,7 @@ void MqttTask(void* pvParameters)
   char prevSubTopic[SIZE_TOPIC] = {0};
   const char *mqttBroker = "broker.hivemq.com";
   const uint16_t mqttPort = 1883;  
-  uint32_t prevTime = millis();
+  sensor_t sensorData = {};
   
   while(1)
   {
@@ -203,12 +203,19 @@ void MqttTask(void* pvParameters)
       }
       else
       {
-        if((millis() - prevTime) >= 500)
+        //Receive 'units consumed' by users from Utility task
+        if(xQueueReceive(queue.utilToMqtt,&sensorData,0) == pdPASS)
         {
-          String dataToPublish = "";
+          //Converting the user units (volumes) from mL to L
+          sensorData.volume1 /= 1000.0;
+          sensorData.volume2 /= 1000.0;
+          sensorData.volume3 /= 1000.0;
+          Serial.println("Util-MQTT RX PASS\n");
+          String dataToPublish = "USER1: " + String(sensorData.volume1,2) + " L\n" +
+                                 "USER2: " + String(sensorData.volume2,2) + " L\n" +
+                                 "USER3: " + String(sensorData.volume3,2) + " L";
           mqttClient.publish(prevSubTopic,dataToPublish.c_str());
-          prevTime = millis();
-        }
+        }  
       }
     }
   }
@@ -273,7 +280,11 @@ void MeterTask(void* pvParameters)
       Serial.println(meterToUtil.recharge.phoneNum);
       Serial.print("Units required: ");
       Serial.println(meterToUtil.recharge.units);
-      /*TO-DO: Add code to send 'volume used' by users to the MQTT task via a Queue*/
+      //Send 'units consumed' by users to the MQTT task
+      if(xQueueSend(queue.utilToMqtt,&meterToUtil.sensorData,0) == pdPASS)
+      {
+        Serial.println("Util-MQTT TX PASS\n");
+      }
       if(strcmp(meterToUtil.recharge.phoneNum,"") && 
         (meterToUtil.recharge.units > 0))
       {
@@ -282,7 +293,7 @@ void MeterTask(void* pvParameters)
         SendOtpToMeter(nrf24,otp);
         Serial.print("OTP = ");
         Serial.println(otp);
-        /*TO-DO: Add code to send phone number and otp to App task via a Queue*/
+        /*TO-DO: Add code to send phone number and OTP to App task via a Queue*/
       }
     }
   }

@@ -52,7 +52,6 @@ void setup()
 {
   Serial.begin(9600);
   TimerInit();
-  flowSensor1.UpdateVolume(25000);
 }
 
 void loop() 

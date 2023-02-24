@@ -465,10 +465,10 @@ void HMI::StateFunc_UserMenu1(void)
             requestSent = HandleRecharge(userIndex,request);
             memset(reqBuff,'\0',SIZE_REQUEST); 
             HMI::ClearParamDisplay(reqColumn,ROW2,strlen(reqBuff));
-          }
-          if(requestSent)
-          {
-            HMI::DisplayRequestSuccess(3000);
+            if(requestSent)
+            {
+              HMI::DisplayRequestSuccess(3000);
+            }
           }
           break;
         case ROW3:

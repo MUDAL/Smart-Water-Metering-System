@@ -79,9 +79,6 @@ void setup()
   xTaskCreatePinnedToCore(ApplicationTask,"",30000,NULL,2,NULL,1);
   xTaskCreatePinnedToCore(NodeTask,"",25000,NULL,1,&nodeTaskHandle,1);
   xTaskCreatePinnedToCore(UtilityTask,"",25000,NULL,1,NULL,1);
-  //preferences.putBytes("0","123A",11);
-  //preferences.putBytes("3","AABB",11);
-  //preferences.putBytes("6","08155176712",12);
 }
 
 void loop() 
@@ -254,7 +251,12 @@ void UtilityTask(void* pvParameters)
     if(nrf24.available())
     {
       char otp[SIZE_OTP] = {0};
-      nrf24.read(otp,SIZE_OTP);
+      //Discard old OTP(if any) before sending the new one
+      if(xQueueReceive(queue.utilToOtp,otp,0) == pdPASS)
+      {
+        Serial.println("Previous OTP discarded\n");
+      }
+      nrf24.read(otp,SIZE_OTP); //new OTP
       Serial.print("OTP = ");
       Serial.println(otp);
       if(xQueueSend(queue.utilToOtp,otp,0) == pdPASS)
