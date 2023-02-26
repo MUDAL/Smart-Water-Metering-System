@@ -229,6 +229,7 @@ void UtilityTask(void* pvParameters)
     {
       Serial.println("Request-Util RX PASS\n");
     }
+    
     if((millis() - prevTime) >= 1000)
     {
       nrf24.stopListening();
