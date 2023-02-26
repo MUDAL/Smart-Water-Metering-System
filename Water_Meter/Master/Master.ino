@@ -176,6 +176,7 @@ void NodeTask(void* pvParameters)
       mni.TransmitData(units,txBufferSize);
       prevTime = millis();
     }
+    
     //Decode data received from node
     if(mni.IsReceiverReady(rxBufferSize))
     {
@@ -237,10 +238,11 @@ void UtilityTask(void* pvParameters)
       meterToUtil.recharge.units = 0;
       prevTime = millis();
     }
+    
     if(nrf24.available())
     {
       char otp[SIZE_OTP] = {0};
-      //Discard old OTP(if any) before sending the new one
+      //Discard old OTP (if any) before sending the new one
       if(xQueueReceive(queue.utilToOtp,otp,0) == pdPASS)
       {
         Serial.println("Previous OTP discarded\n");
