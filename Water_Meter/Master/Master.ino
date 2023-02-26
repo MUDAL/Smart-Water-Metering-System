@@ -25,24 +25,28 @@ typedef struct
   float volume2;
   float volume3;  
 }sensor_t; //mL
+
 //Recharge -> Utility
 typedef struct
 {
   char phoneNum[SIZE_PHONE];
   uint32_t units;
 }recharge_util_t;
+
 //Master -> Utility
 typedef struct
 {
   recharge_util_t recharge;
   sensor_t sensorData;
 }meter_util_t;
+
 //Recharge -> Node
 typedef struct
 {
   UserIndex userIndex;
   uint32_t units;
 }recharge_node_t;
+
 //Queues
 typedef struct
 {
@@ -136,22 +140,26 @@ void NodeTask(void* pvParameters)
 {
   vTaskSuspend(NULL);
   static MNI mni(&Serial2);
-  static sensor_t sensorData;
+  recharge_node_t rechargeToNode = {};
+  sensor_t sensorData = {};
+
+  const uint8_t numOfUsers = 3;
+  uint32_t units[numOfUsers] = {0}; //Array of recharged units
+  const uint8_t txBufferSize = sizeof(units);  
+  const uint8_t rxBufferSize = sizeof(sensorData);
+   
+  mni.TransmitData(units,txBufferSize); //Initial request for sensor data from the node  
   bool isOtpCorrect = false;
-  recharge_node_t rechargeToNode = {};  
-  //Initial request for sensor data from the node
-  mni.EncodeData(MNI::QUERY,MNI::TxDataId::DATA_QUERY);
-  mni.TransmitData();  
   uint32_t prevTime = millis();
-      
+    
   while(1)
   {
     if((millis() - prevTime) >= 2500)
     {
-      mni.EncodeData(MNI::QUERY,MNI::TxDataId::DATA_QUERY); 
-      mni.EncodeData(0,MNI::TxDataId::USER1_RECHARGE);
-      mni.EncodeData(0,MNI::TxDataId::USER2_RECHARGE);
-      mni.EncodeData(0,MNI::TxDataId::USER3_RECHARGE);
+      for(uint8_t i = 0; i < numOfUsers; i++)
+      {
+        units[i] = 0;
+      }
       if(xQueueReceive(queue.otpToNode,&isOtpCorrect,0) == pdPASS)
       {
         Serial.println("OTP-Node RX PASS\n");
@@ -162,51 +170,32 @@ void NodeTask(void* pvParameters)
       }
       if(isOtpCorrect)
       {
-        switch(rechargeToNode.userIndex)
-        {
-          case USER1:
-            mni.EncodeData(rechargeToNode.units,MNI::TxDataId::USER1_RECHARGE);
-            break;
-          case USER2:
-            mni.EncodeData(rechargeToNode.units,MNI::TxDataId::USER2_RECHARGE);
-            break;
-          case USER3:
-            mni.EncodeData(rechargeToNode.units,MNI::TxDataId::USER3_RECHARGE);
-            break;
-        }
-        rechargeToNode.units = 0;
-        rechargeToNode.userIndex = USER_UNKNOWN;
+        units[rechargeToNode.userIndex] = rechargeToNode.units;
         isOtpCorrect = false;
       }
-      mni.TransmitData();
+      mni.TransmitData(units,txBufferSize);
       prevTime = millis();
     }
     //Decode data received from node
-    if(mni.ReceivedData())
+    if(mni.IsReceiverReady(rxBufferSize))
     {
-      if(mni.DecodeData(MNI::RxDataId::DATA_ACK) == MNI::ACK)
+      mni.ReceiveData(&sensorData,rxBufferSize);
+      //Debug
+      Serial.print("User1 volume: ");
+      Serial.println(sensorData.volume1); 
+      Serial.print("User2 volume: ");
+      Serial.println(sensorData.volume2); 
+      Serial.print("User3 volume: ");
+      Serial.println(sensorData.volume3);
+      //Place sensor data in appropriate Queue(s)
+      if(xQueueSend(queue.nodeToGetUnits,&sensorData,0) == pdPASS)
       {
-        Serial.println("--Received serial data from node\n");
-        sensorData.volume1 = mni.DecodeData(MNI::RxDataId::USER1_VOLUME);
-        sensorData.volume2 = mni.DecodeData(MNI::RxDataId::USER2_VOLUME);
-        sensorData.volume3 = mni.DecodeData(MNI::RxDataId::USER3_VOLUME);
-        //Debug
-        Serial.print("User1 volume: ");
-        Serial.println(sensorData.volume1); 
-        Serial.print("User2 volume: ");
-        Serial.println(sensorData.volume2); 
-        Serial.print("User3 volume: ");
-        Serial.println(sensorData.volume3);
-        //Place sensor data in the appropriate Queue(s)
-        if(xQueueSend(queue.nodeToGetUnits,&sensorData,0) == pdPASS)
-        {
-          Serial.println("--Data successfully sent to 'GetUnits' callback\n");
-        }
-        if(xQueueSend(queue.nodeToUtil,&sensorData,0) == pdPASS)
-        {
-          Serial.println("--Data successfully sent to Utility task\n");
-        }
+        Serial.println("--Data successfully sent to 'GetUnits' callback\n");
       }
+      if(xQueueSend(queue.nodeToUtil,&sensorData,0) == pdPASS)
+      {
+        Serial.println("--Data successfully sent to Utility task\n");
+      }      
     }
   }
 }

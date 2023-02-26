@@ -6,64 +6,31 @@ MNI::MNI(SoftwareSerial* serial,uint32_t baudRate)
 {
   //Initialize private variables
   port = serial;
-  port->begin(baudRate);
-  rxDataCounter = 0;
-  for(uint8_t i = 0; i < BufferSize::TX; i++)
-  {
-    txBuffer[i] = 0;
-  }
-  for(uint8_t i = 0; i < BufferSize::RX; i++)
-  {
-    rxBuffer[i] = 0;
-  }    
+  port->begin(baudRate);   
 }
 
-void MNI::EncodeData(uint32_t dataToEncode,TxDataId id)
+bool MNI::IsReceiverReady(uint8_t expectedNumOfBytes)
 {
-  uint8_t dataID = (uint8_t)id;
-  //split 32-bit data into 4 bytes and store in the 'txBuffer'
-  txBuffer[dataID] = (dataToEncode & 0xFF000000) >> 24; 
-  txBuffer[dataID + 1] = (dataToEncode & 0x00FF0000) >> 16;
-  txBuffer[dataID + 2] = (dataToEncode & 0x0000FF00) >> 8;
-  txBuffer[dataID + 3] = (dataToEncode & 0x000000FF); 
+  return (port->available() == expectedNumOfBytes);
 }
 
-void MNI::TransmitData(void)
+void MNI::TransmitData(void* dataBuffer,uint8_t dataSize)
 {
-  Serial.print("Tx buffer: ");
-  for(uint8_t i = 0; i < BufferSize::TX; i++)
+  uint8_t* txBuffer = (uint8_t*)dataBuffer;
+  for(uint8_t i = 0; i < dataSize; i++)
   {
     port->write(txBuffer[i]);
-    //Debug 
     Serial.print(txBuffer[i]);
     Serial.print(' ');
-  }
+  } 
   Serial.print("\n");  
 }
 
-bool MNI::ReceivedData(void)
+void MNI::ReceiveData(void* dataBuffer,uint8_t dataSize)
 {
-  bool rxDone = false;
-  if(port->available())
+  uint8_t* rxBuffer = (uint8_t*)dataBuffer;
+  for(uint8_t i = 0; i < dataSize; i++)
   {
-    if(rxDataCounter < BufferSize::RX)
-    {
-      rxBuffer[rxDataCounter] = port->read();
-      rxDataCounter++; 
-    }
-  }
-  if(rxDataCounter == BufferSize::RX)
-  {
-    rxDataCounter = 0;
-    rxDone = true;
-  }
-  return rxDone;  
-}
-
-uint32_t MNI::DecodeData(RxDataId id)
-{
-  uint8_t dataID = (uint8_t)id;  
-  //merge 4 bytes stored in 'rxBuffer' into 32-bit data
-  return (rxBuffer[dataID] << 24) | (rxBuffer[dataID + 1] << 16) |
-         (rxBuffer[dataID + 2] << 8) | (rxBuffer[dataID + 3]); 
+    rxBuffer[i] = port->read();
+  }  
 }

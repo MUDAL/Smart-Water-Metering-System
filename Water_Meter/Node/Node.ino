@@ -15,6 +15,20 @@
  * have flown through the sensor.
 */
 
+enum User
+{
+  USER1 = 0,
+  USER2,
+  USER3
+};
+
+typedef struct
+{
+  float volume1;
+  float volume2;
+  float volume3;
+}sensor_t;
+
 namespace Pin
 {
   const uint8_t flowSensor1 = 3;
@@ -34,9 +48,7 @@ FlowSensor flowSensor2(Pin::flowSensor2);
 FlowSensor flowSensor3(Pin::flowSensor3);
 
 //Current readings of the flow sensors (in mL)
-volatile float volume1;
-volatile float volume2;
-volatile float volume3;
+static volatile sensor_t sensorData;
 
 /**
  * @brief Initialize hardware timer 1.
@@ -58,38 +70,31 @@ void setup()
 
 void loop() 
 {
-  if(mni.ReceivedData())
+  const uint8_t numOfUsers = 3;
+  uint32_t recharge[numOfUsers] = {0};
+  const uint8_t rxBufferSize = sizeof(recharge);
+  
+  if(mni.IsReceiverReady(rxBufferSize))
   {
-    if(mni.DecodeData(MNI::RxDataId::DATA_QUERY) == MNI::QUERY)
-    {
-      uint32_t user1Recharge = mni.DecodeData(MNI::RxDataId::USER1_RECHARGE);
-      uint32_t user2Recharge = mni.DecodeData(MNI::RxDataId::USER2_RECHARGE);
-      uint32_t user3Recharge = mni.DecodeData(MNI::RxDataId::USER3_RECHARGE);
-      //Multiply by 1000 to convert the recharged units from L to mL
-      flowSensor1.UpdateVolume(user1Recharge * 1000);
-      flowSensor2.UpdateVolume(user2Recharge * 1000);
-      flowSensor3.UpdateVolume(user3Recharge * 1000);
-      
-      //Debug
-      Serial.print("volume 1: ");
-      Serial.println(volume1);   
-      Serial.print("volume 2: ");
-      Serial.println(volume2); 
-      Serial.print("volume 3: ");
-      Serial.println(volume3); 
-      
-      mni.EncodeData(MNI::ACK,MNI::TxDataId::DATA_ACK);
-      mni.EncodeData(lround(volume1),MNI::TxDataId::USER1_VOLUME);
-      mni.EncodeData(lround(volume2),MNI::TxDataId::USER2_VOLUME);
-      mni.EncodeData(lround(volume3),MNI::TxDataId::USER3_VOLUME);
-      mni.TransmitData();
-    }
+    //Receive recharged units and convert from L to mL
+    mni.ReceiveData(&recharge,rxBufferSize);   
+    flowSensor1.UpdateVolume(recharge[USER1] * 1000);
+    flowSensor2.UpdateVolume(recharge[USER2] * 1000);
+    flowSensor3.UpdateVolume(recharge[USER3] * 1000);
+    //Debug
+    Serial.print("volume 1: ");
+    Serial.println(sensorData.volume1);   
+    Serial.print("volume 2: ");
+    Serial.println(sensorData.volume2); 
+    Serial.print("volume 3: ");
+    Serial.println(sensorData.volume3);     
+    mni.TransmitData(&sensorData,sizeof(sensorData));
   }
 }
 
 ISR(TIMER1_COMPA_vect)
 {
-  volume1 = flowSensor1.GetVolume();
-  volume2 = flowSensor2.GetVolume();
-  volume3 = flowSensor3.GetVolume();
+  sensorData.volume1 = flowSensor1.GetVolume();
+  sensorData.volume2 = flowSensor2.GetVolume();
+  sensorData.volume3 = flowSensor3.GetVolume();
 }
