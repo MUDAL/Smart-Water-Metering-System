@@ -27,10 +27,12 @@ namespace Pin
 //Master-Node-Interface 
 SoftwareSerial nodeSerial(Pin::nodeRx,Pin::nodeTx);
 MNI mni(&nodeSerial);
+
 //Flow sensors
 FlowSensor flowSensor1(Pin::flowSensor1);
 FlowSensor flowSensor2(Pin::flowSensor2);
 FlowSensor flowSensor3(Pin::flowSensor3);
+
 //Current readings of the flow sensors (in mL)
 volatile float volume1;
 volatile float volume2;
