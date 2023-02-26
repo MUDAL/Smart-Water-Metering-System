@@ -22,6 +22,7 @@ void MNI::TransmitData(void* dataBuffer,uint8_t dataSize)
   for(uint8_t i = 0; i < dataSize; i++)
   {
     port->write(txBuffer[i]);
+    //Debug
     Serial.print(txBuffer[i]);
     Serial.print(' ');
   } 

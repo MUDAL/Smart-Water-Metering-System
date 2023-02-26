@@ -32,6 +32,7 @@ typedef struct
   recharge_util_t recharge;
   sensor_t sensorData;
 }meter_util_t;
+
 //Queues
 typedef struct
 {
@@ -121,7 +122,6 @@ static void IntegerToString(uint32_t integer,char* stringPtr)
 
 void setup() 
 {
-  // put your setup code here, to run once:
   setCpuFrequencyMhz(80);
   Serial.begin(115200);  
   preferences.begin("Utility",false);
