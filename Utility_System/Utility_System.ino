@@ -332,7 +332,6 @@ void MeterTask(void* pvParameters)
   nrf24.openWritingPipe(addr[0]);
   nrf24.openReadingPipe(1,addr[1]);
   nrf24.setPALevel(RF24_PA_MAX);
-
   nrf24.startListening();
     
   while(1)
