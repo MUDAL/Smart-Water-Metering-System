@@ -1,0 +1,11 @@
+*User1:
+- ID: 123A
+- PIN: AABB
+
+*User2:
+- ID: 1111
+- PIN: 1111
+
+*User3:
+- ID: 2222
+- PIN: 2222
