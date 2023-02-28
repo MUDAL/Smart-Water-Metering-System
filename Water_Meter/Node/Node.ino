@@ -77,7 +77,7 @@ void loop()
   if(mni.IsReceiverReady(rxBufferSize))
   {
     //Receive recharged units and convert from L to mL
-    mni.ReceiveData(&units,rxBufferSize);   
+    mni.ReceiveData(units,rxBufferSize);   
     flowSensor1.UpdateVolume(units[USER1] * 1000);
     flowSensor2.UpdateVolume(units[USER2] * 1000);
     flowSensor3.UpdateVolume(units[USER3] * 1000);
