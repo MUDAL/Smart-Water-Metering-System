@@ -1,5 +1,5 @@
 # Smart-Water-Metering-System
-Smart water metering system proposed by Tosin
+This repository contains code, schematic, images, and documentation for a smart water metering system.  
 
 ## How it works  
 The system is divided into two parts.  
@@ -22,5 +22,5 @@ In this project, a single meter is assigned to 3 users.
 Each user has a unique ID and PIN in order to log in to the smart meter.  
 
 ## Credits  
-1. Arduino Interrupts: https://dronebotworkshop.com/interrupts/   
+1. Atmega328 Interrupts: https://dronebotworkshop.com/interrupts/   
 2. NRF24L01 communication: https://www.instructables.com/Arduino-Wireless-Communication-Using-NRF24L01/   
