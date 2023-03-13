@@ -27,3 +27,8 @@ Each user has a unique ID and PIN in order to log in to the smart meter.
 ## Credits  
 1. Atmega328 Interrupts: https://dronebotworkshop.com/interrupts/   
 2. NRF24L01 communication: https://www.instructables.com/Arduino-Wireless-Communication-Using-NRF24L01/   
+
+## Recommendations  
+1. Inclusion of a proper payment system  
+2. Replacement of the NRF24L01 with a wireless system that can communicate over long distances e.g. LoRaWAN and GSM.   
+
