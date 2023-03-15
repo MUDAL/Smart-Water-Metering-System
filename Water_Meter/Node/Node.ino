@@ -5,7 +5,7 @@
 #include "FlowSensor.h"
 
 /**
- * @breif Description of the node.
+ * @brief Description of the node.
  * 
  * Receives a 'request-to-send' from the Master. It sends the available units
  * or volume for the 3 users to the master.
