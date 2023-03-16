@@ -246,22 +246,20 @@ static void PutUnitsIntoSD(User user,uint32_t* approxVolumePtr)
 void setup() 
 {
   Serial.begin(9600);
-  TimerInit();
-  
+  if(SD.begin(Pin::chipSelect))
+  {
+    Serial.println("SD INIT: SUCCESS");  
+    flowSensor1.UpdateVolume(GetUnitsFromSD(USER1));
+    flowSensor2.UpdateVolume(GetUnitsFromSD(USER2));
+    flowSensor3.UpdateVolume(GetUnitsFromSD(USER3));
+  }  
   pinMode(Pin::solenoidValve1,OUTPUT);
   pinMode(Pin::solenoidValve2,OUTPUT);
   pinMode(Pin::solenoidValve3,OUTPUT);
   digitalWrite(Pin::solenoidValve1,LOW);
   digitalWrite(Pin::solenoidValve2,LOW);
   digitalWrite(Pin::solenoidValve3,LOW);  
-  
-  if(SD.begin(Pin::chipSelect))
-  {
-    Serial.println("SD INIT: SUCCESS");
-    flowSensor1.UpdateVolume(GetUnitsFromSD(USER1));
-    flowSensor2.UpdateVolume(GetUnitsFromSD(USER2));
-    flowSensor3.UpdateVolume(GetUnitsFromSD(USER3));
-  }
+  TimerInit();  
 }
 
 void loop() 

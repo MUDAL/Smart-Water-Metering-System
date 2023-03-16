@@ -2294,7 +2294,7 @@
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 642da448-964a-40d2-a12a-0e277e9b107c)
   )
-  (label "3.3V" (at 212.598 128.27 0)
+  (label "5V" (at 212.598 128.27 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 688bf71b-fc56-4ec1-996d-a3e83ec333ef)
   )
