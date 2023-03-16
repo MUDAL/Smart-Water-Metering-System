@@ -56,6 +56,10 @@ FlowSensor flowSensor3(Pin::flowSensor3);
 //Current readings of the flow sensors (in mL)
 static volatile sensor_t sensorData;
 
+//Software timer to log data to SD card periodically
+const uint32_t sdLogInterval = 500; //in milliseconds
+uint32_t prevLogTime = millis();
+
 /**
  * @brief Converts a string to an integer.
  * e.g.
@@ -67,7 +71,7 @@ static volatile sensor_t sensorData;
 */
 static void StringToInteger(char* stringPtr,uint32_t* integerPtr)
 {
-  uint32_t integer = 0;
+  *integerPtr = 0;
   uint8_t len = strlen(stringPtr);
   uint32_t j = 1;
   for(uint8_t i = 0; i < len; i++)
@@ -156,7 +160,7 @@ static void SD_ReadFile(const char* path,char* buff,uint8_t buffLen)
  * if water isn't flowing, deactivate the solenoid valve. If  
  * water is flowing, activate the solenoid valve.
 */
-static void DriveValveBasedOnFlow(User user,uint32_t& oldApproxVolumeRef)
+static void DriveValveBasedOnFlow(User user,uint32_t* oldApproxVolumePtr)
 {
   uint8_t valvePin;
   uint32_t newApproxVolume;
@@ -176,10 +180,10 @@ static void DriveValveBasedOnFlow(User user,uint32_t& oldApproxVolumeRef)
       newApproxVolume = lround(sensorData.volume3);
       break;
   }
-  if(newApproxVolume != oldApproxVolumeRef)
+  if(newApproxVolume != oldApproxVolumePtr[user])
   {
     digitalWrite(valvePin,HIGH);
-    oldApproxVolumeRef = newApproxVolume;
+    oldApproxVolumePtr[user] = newApproxVolume;
   }
   else
   {
@@ -192,7 +196,7 @@ static void DriveValveBasedOnFlow(User user,uint32_t& oldApproxVolumeRef)
 */
 static uint32_t GetUnitsFromSD(User user)
 {
-  uint32_t approxVolume;
+  uint32_t approxVolume = 0;
   const uint8_t buffLen = 30;
   char fileBuff[buffLen + 1] = {0};
   
@@ -208,6 +212,8 @@ static uint32_t GetUnitsFromSD(User user)
       SD_ReadFile("/user3.txt",fileBuff,buffLen);
       break;
   }
+  Serial.print("data read from SD = ");
+  Serial.println(fileBuff);
   StringToInteger(fileBuff,&approxVolume);
   return approxVolume;
 }
@@ -215,12 +221,14 @@ static uint32_t GetUnitsFromSD(User user)
 /**
  * @brief Store user's units (or volume) on the SD card
 */
-static void PutUnitsIntoSD(User user,uint32_t approxVolume)
+static void PutUnitsIntoSD(User user,uint32_t* approxVolumePtr)
 {
   const uint8_t buffLen = 30;
   char fileBuff[buffLen + 1] = {0};
   
-  IntegerToString(approxVolume,fileBuff);
+  IntegerToString(approxVolumePtr[user],fileBuff);
+  Serial.print("data written to SD = ");
+  Serial.println(fileBuff); 
   switch(user)
   {
     case USER1:
@@ -259,16 +267,17 @@ void setup()
 void loop() 
 {
   const uint8_t numOfUsers = 3;
-  uint32_t units[numOfUsers] = {0}; //Array of recharged units
-  const uint8_t rxBufferSize = sizeof(units);
+  static uint32_t oldApproxVolume[numOfUsers]; //Array of previous value of units (or volumes) consumed
+  uint32_t rechargedUnits[numOfUsers] = {0}; //Array of recharged units
+  const uint8_t rxBufferSize = sizeof(rechargedUnits);
   
   if(mni.IsReceiverReady(rxBufferSize))
   {
     //Receive recharged units and convert from L to mL
-    mni.ReceiveData(units,rxBufferSize);   
-    flowSensor1.UpdateVolume(units[USER1] * 1000);
-    flowSensor2.UpdateVolume(units[USER2] * 1000);
-    flowSensor3.UpdateVolume(units[USER3] * 1000);
+    mni.ReceiveData(rechargedUnits,rxBufferSize);   
+    flowSensor1.UpdateVolume(rechargedUnits[USER1] * 1000);
+    flowSensor2.UpdateVolume(rechargedUnits[USER2] * 1000);
+    flowSensor3.UpdateVolume(rechargedUnits[USER3] * 1000);
     //Debug
     Serial.print("volume 1: ");
     Serial.println(sensorData.volume1);   
@@ -277,6 +286,19 @@ void loop()
     Serial.print("volume 3: ");
     Serial.println(sensorData.volume3);     
     mni.TransmitData(&sensorData,sizeof(sensorData));
+  }
+  
+  DriveValveBasedOnFlow(USER1,oldApproxVolume);
+  DriveValveBasedOnFlow(USER2,oldApproxVolume);
+  DriveValveBasedOnFlow(USER3,oldApproxVolume);
+
+  if((millis() - prevLogTime) >= sdLogInterval)
+  {
+    Serial.println("Logging data");
+    PutUnitsIntoSD(USER1,oldApproxVolume);
+    PutUnitsIntoSD(USER2,oldApproxVolume);
+    PutUnitsIntoSD(USER3,oldApproxVolume); 
+    prevLogTime = millis();
   }
 }
 

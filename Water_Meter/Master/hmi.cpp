@@ -16,7 +16,7 @@
 */
 void StringToInteger(char* stringPtr,uint32_t* integerPtr)
 {
-  uint32_t integer = 0;
+  *integerPtr = 0;
   uint8_t len = strlen(stringPtr);
   uint32_t j = 1;
   for(uint8_t i = 0; i < len; i++)
