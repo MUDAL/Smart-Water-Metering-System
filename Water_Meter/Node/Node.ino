@@ -265,6 +265,7 @@ void setup()
 void loop() 
 {
   const uint8_t numOfUsers = 3;
+  const User user[numOfUsers] = {USER1,USER2,USER3};
   static uint32_t oldApproxVolume[numOfUsers]; //Array of previous value of units (or volumes) consumed
   uint32_t rechargedUnits[numOfUsers] = {0}; //Array of recharged units
   const uint8_t rxBufferSize = sizeof(rechargedUnits);
@@ -285,17 +286,19 @@ void loop()
     Serial.println(sensorData.volume3);     
     mni.TransmitData(&sensorData,sizeof(sensorData));
   }
-  
-  DriveValveBasedOnFlow(USER1,oldApproxVolume);
-  DriveValveBasedOnFlow(USER2,oldApproxVolume);
-  DriveValveBasedOnFlow(USER3,oldApproxVolume);
+
+  for(uint8_t i = 0; i < numOfUsers; i++)
+  {
+    DriveValveBasedOnFlow(user[i],oldApproxVolume);
+  }
 
   if((millis() - prevLogTime) >= sdLogInterval)
   {
     Serial.println("Logging data");
-    PutUnitsIntoSD(USER1,oldApproxVolume);
-    PutUnitsIntoSD(USER2,oldApproxVolume);
-    PutUnitsIntoSD(USER3,oldApproxVolume); 
+    for(uint8_t i = 0; i < numOfUsers; i++)
+    {
+      PutUnitsIntoSD(user[i],oldApproxVolume);
+    }    
     prevLogTime = millis();
   }
 }
