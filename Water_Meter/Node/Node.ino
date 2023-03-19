@@ -127,7 +127,7 @@ static void TimerInit(void)
 */
 static void SD_WriteFile(const char* path,const char* message)
 {
-  File file = SD.open(path,FILE_WRITE);
+  File file = SD.open(path,O_RDWR);
   file.print(message);
   file.close();
 }
@@ -197,7 +197,7 @@ static void DriveValveBasedOnFlow(User user,uint32_t* oldApproxVolumePtr)
 static uint32_t GetUnitsFromSD(User user)
 {
   uint32_t approxVolume = 0;
-  const uint8_t buffLen = 30;
+  const uint8_t buffLen = 10;
   char fileBuff[buffLen + 1] = {0};
   
   switch(user)
@@ -223,7 +223,7 @@ static uint32_t GetUnitsFromSD(User user)
 */
 static void PutUnitsIntoSD(User user,uint32_t* approxVolumePtr)
 {
-  const uint8_t buffLen = 30;
+  const uint8_t buffLen = 10;
   char fileBuff[buffLen + 1] = {0};
   
   IntegerToString(approxVolumePtr[user],fileBuff);
@@ -248,7 +248,7 @@ void setup()
   Serial.begin(9600);
   if(SD.begin(Pin::chipSelect))
   {
-    Serial.println("SD INIT: SUCCESS");  
+    Serial.println("SD INIT: SUCCESS");    
     flowSensor1.UpdateVolume(GetUnitsFromSD(USER1));
     flowSensor2.UpdateVolume(GetUnitsFromSD(USER2));
     flowSensor3.UpdateVolume(GetUnitsFromSD(USER3));
