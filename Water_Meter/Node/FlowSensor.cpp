@@ -20,7 +20,7 @@ float FlowSensor::GetVolume(void)
   if(digitalRead(pin) && !isPrevHigh)
   {
     volume -= 2.1;
-    if(volume < 0)
+    if(lround(volume) < 0)
     {
       volume = 0;
     }
