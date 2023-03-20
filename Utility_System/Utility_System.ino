@@ -120,6 +120,21 @@ static void IntegerToString(uint32_t integer,char* stringPtr)
   }
 }
 
+/**
+ * @brief Converts a float to a string.
+*/
+static void FloatToString(float floatPt,char* stringPtr,uint32_t multiplier)
+{
+  uint32_t floatAsInt = lround(floatPt * multiplier);
+  char quotientBuff[20] = {0};
+  char remainderBuff[20] = {0};
+  IntegerToString((floatAsInt / multiplier),quotientBuff);
+  IntegerToString((floatAsInt % multiplier),remainderBuff);
+  strcat(stringPtr,quotientBuff);
+  strcat(stringPtr,".");
+  strcat(stringPtr,remainderBuff);
+}
+
 void setup() 
 {
   setCpuFrequencyMhz(80);
@@ -208,6 +223,8 @@ void MqttTask(void* pvParameters)
 {
   static WiFiClient wifiClient;
   static PubSubClient mqttClient(wifiClient);
+  static char dataToPublish[120];
+  
   char prevSubTopic[SIZE_TOPIC] = {0};
   const char *mqttBroker = "broker.hivemq.com";
   const uint16_t mqttPort = 1883;  
@@ -240,10 +257,28 @@ void MqttTask(void* pvParameters)
           sensorData.volume2 /= 1000.0;
           sensorData.volume3 /= 1000.0;
           Serial.println("Util-MQTT RX PASS\n");
-          String dataToPublish = "USER1: " + String(sensorData.volume1,2) + " L\n" +
-                                 "USER2: " + String(sensorData.volume2,2) + " L\n" +
-                                 "USER3: " + String(sensorData.volume3,2) + " L";
-          mqttClient.publish(prevSubTopic,dataToPublish.c_str());
+
+          char volume1Buff[11] = {0};
+          char volume2Buff[11] = {0};
+          char volume3Buff[11] = {0};
+
+          FloatToString(sensorData.volume1,volume1Buff,100);
+          FloatToString(sensorData.volume2,volume2Buff,100);
+          FloatToString(sensorData.volume3,volume3Buff,100);
+
+          strcat(dataToPublish,"User1's unit: ");
+          strcat(dataToPublish,volume1Buff);
+          strcat(dataToPublish," L\n");
+          strcat(dataToPublish,"User2's unit: ");
+          strcat(dataToPublish,volume2Buff);
+          strcat(dataToPublish," L\n");
+          strcat(dataToPublish,"User3's unit: ");
+          strcat(dataToPublish,volume3Buff);
+          strcat(dataToPublish," L");
+                                                     
+          mqttClient.publish(prevSubTopic,dataToPublish);
+          uint32_t dataLen = strlen(dataToPublish);
+          memset(dataToPublish,'\0',dataLen);
         }  
       }
     }
