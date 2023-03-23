@@ -7,11 +7,12 @@
 #include <RF24.h> //Version 1.4.6
 #include "sim800l.h"
 
-#define SIZE_TOPIC            30 //MQTT topic: Max number of characters
-//Number of characters (including NULL)
+//Max number of characters
+#define SIZE_TOPIC            30 
 #define SIZE_PHONE            12 
 #define SIZE_OTP              11 
 #define SIZE_REQUEST          11 //for units requested by the user
+#define SIZE_CLIENT_ID        23
 
 //Meter(Master) -> Utility
 typedef struct
@@ -42,6 +43,7 @@ typedef struct
 }queue_t;
 
 WiFiManagerParameter subTopic("5","HiveMQ Subscription topic","",SIZE_TOPIC);
+WiFiManagerParameter clientID("A","MQTT client ID","",SIZE_CLIENT_ID);
 Preferences preferences; //for accessing ESP32 flash memory
 queue_t queue;
 TaskHandle_t wifiTaskHandle;
@@ -123,15 +125,27 @@ static void IntegerToString(uint32_t integer,char* stringPtr)
 /**
  * @brief Converts a float to a string.
 */
-static void FloatToString(float floatPt,char* stringPtr,uint32_t multiplier)
+static void FloatToString(float floatPt,char* stringPtr,uint8_t decimalPlaces)
 {
+  uint32_t multiplier = 1;
+  for(uint8_t i = 0; i < decimalPlaces; i++)
+  {
+    multiplier *= 10;
+  }  
   uint32_t floatAsInt = lround(floatPt * multiplier);
   char quotientBuff[20] = {0};
   char remainderBuff[20] = {0};
+  
   IntegerToString((floatAsInt / multiplier),quotientBuff);
   IntegerToString((floatAsInt % multiplier),remainderBuff);
   strcat(stringPtr,quotientBuff);
   strcat(stringPtr,".");
+  uint8_t remainderLen = strlen(remainderBuff);
+  while(remainderLen < decimalPlaces)
+  {
+    strcat(stringPtr,"0");
+    remainderLen++;
+  }  
   strcat(stringPtr,remainderBuff);
 }
 
@@ -169,6 +183,7 @@ void WiFiManagementTask(void* pvParameters)
   static WiFiManager wm;
   WiFi.mode(WIFI_STA);  
   wm.addParameter(&subTopic);
+  wm.addParameter(&clientID);
   wm.setConfigPortalBlocking(false);
   wm.setSaveParamsCallback(WiFiManagerCallback);   
   //Auto-connect to previous network if available.
@@ -226,6 +241,7 @@ void MqttTask(void* pvParameters)
   static char dataToPublish[120];
   
   char prevSubTopic[SIZE_TOPIC] = {0};
+  char prevClientID[SIZE_CLIENT_ID] = {0};
   const char *mqttBroker = "broker.hivemq.com";
   const uint16_t mqttPort = 1883;  
   sensor_t sensorData = {};
@@ -236,12 +252,14 @@ void MqttTask(void* pvParameters)
     {       
       if(!mqttClient.connected())
       { 
+        memset(prevSubTopic,'\0',SIZE_TOPIC);
+        memset(prevClientID,'\0',SIZE_CLIENT_ID);
         preferences.getBytes("5",prevSubTopic,SIZE_TOPIC);
+        preferences.getBytes("A",prevClientID,SIZE_CLIENT_ID);
         mqttClient.setServer(mqttBroker,mqttPort);
         while(!mqttClient.connected())
         {
-          String clientID = String(WiFi.macAddress());
-          if(mqttClient.connect(clientID.c_str()))
+          if(mqttClient.connect(prevClientID))
           {
             Serial.println("Connected to HiveMQ broker");
           }
@@ -262,17 +280,17 @@ void MqttTask(void* pvParameters)
           char volume2Buff[11] = {0};
           char volume3Buff[11] = {0};
 
-          FloatToString(sensorData.volume1,volume1Buff,100);
-          FloatToString(sensorData.volume2,volume2Buff,100);
-          FloatToString(sensorData.volume3,volume3Buff,100);
+          FloatToString(sensorData.volume1,volume1Buff,2);
+          FloatToString(sensorData.volume2,volume2Buff,2);
+          FloatToString(sensorData.volume3,volume3Buff,2);
 
-          strcat(dataToPublish,"User1's unit: ");
+          strcat(dataToPublish,"USER1: ");
           strcat(dataToPublish,volume1Buff);
           strcat(dataToPublish," L\n");
-          strcat(dataToPublish,"User2's unit: ");
+          strcat(dataToPublish,"USER2: ");
           strcat(dataToPublish,volume2Buff);
           strcat(dataToPublish," L\n");
-          strcat(dataToPublish,"User3's unit: ");
+          strcat(dataToPublish,"USER3: ");
           strcat(dataToPublish,volume3Buff);
           strcat(dataToPublish," L");
                                                      
@@ -418,6 +436,9 @@ void MeterTask(void* pvParameters)
 void WiFiManagerCallback(void) 
 {
   char prevSubTopic[SIZE_TOPIC] = {0};
+  char prevClientID[SIZE_CLIENT_ID] = {0};
   preferences.getBytes("5",prevSubTopic,SIZE_TOPIC);  
+  preferences.getBytes("A",prevClientID,SIZE_CLIENT_ID);
   StoreNewFlashData("5",subTopic.getValue(),prevSubTopic,SIZE_TOPIC);
+  StoreNewFlashData("A",clientID.getValue(),prevClientID,SIZE_CLIENT_ID);
 }
