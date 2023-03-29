@@ -127,8 +127,11 @@ static void TimerInit(void)
 */
 static void SD_WriteFile(const char* path,const char* message)
 {
-  File file = SD.open(path,O_RDWR);
-  file.print(message);
+  File file = SD.open(path,FILE_WRITE | O_TRUNC);
+  if(file)
+  {
+    file.print(message); 
+  }
   file.close();
 }
 
@@ -143,13 +146,16 @@ static void SD_ReadFile(const char* path,char* buff,uint8_t buffLen)
 {
   uint8_t i = 0;
   File file = SD.open(path);
-  while(file.available())
+  if(file)
   {
-    if(i < buffLen)
+    while(file.available())
     {
-      buff[i] = file.read();
-      i++;
-    }
+      if(i < buffLen)
+      {
+        buff[i] = file.read();
+        i++;
+      }
+    } 
   }
   buff[i] = '\0';
   file.close();
@@ -203,13 +209,13 @@ static uint32_t GetUnitsFromSD(User user)
   switch(user)
   {
     case USER1:
-      SD_ReadFile("/user1.txt",fileBuff,buffLen);
+      SD_ReadFile("user1.txt",fileBuff,buffLen);
       break;
     case USER2:
-      SD_ReadFile("/user2.txt",fileBuff,buffLen);
+      SD_ReadFile("user2.txt",fileBuff,buffLen);
       break;
     case USER3:
-      SD_ReadFile("/user3.txt",fileBuff,buffLen);
+      SD_ReadFile("user3.txt",fileBuff,buffLen);
       break;
   }
   Serial.print("data read from SD = ");
@@ -232,13 +238,13 @@ static void PutUnitsIntoSD(User user,uint32_t* approxVolumePtr)
   switch(user)
   {
     case USER1:
-      SD_WriteFile("/user1.txt",fileBuff);
+      SD_WriteFile("user1.txt",fileBuff);
       break;
     case USER2:
-      SD_WriteFile("/user2.txt",fileBuff);
+      SD_WriteFile("user2.txt",fileBuff);
       break;
     case USER3: 
-      SD_WriteFile("/user3.txt",fileBuff);
+      SD_WriteFile("user3.txt",fileBuff);
       break;
   }
 }
@@ -247,8 +253,8 @@ void setup()
 {
   Serial.begin(9600);
   if(SD.begin(Pin::chipSelect))
-  {
-    Serial.println("SD INIT: SUCCESS");    
+  { 
+    Serial.println("SD INIT: SUCCESS");
     flowSensor1.UpdateVolume(GetUnitsFromSD(USER1));
     flowSensor2.UpdateVolume(GetUnitsFromSD(USER2));
     flowSensor3.UpdateVolume(GetUnitsFromSD(USER3));
