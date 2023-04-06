@@ -56,9 +56,9 @@ FlowSensor flowSensor3(Pin::flowSensor3);
 //Current readings of the flow sensors (in mL)
 static volatile sensor_t sensorData;
 
-//Software timer to log data to SD card periodically
-const uint32_t sdLogInterval = 500; //in milliseconds
-uint32_t prevLogTime = millis();
+const uint8_t numOfUsers = 3;
+static bool hasVolumeChanged[numOfUsers];
+static bool noFlow[numOfUsers];
 
 /**
  * @brief Converts a string to an integer.
@@ -162,42 +162,6 @@ static void SD_ReadFile(const char* path,char* buff,uint8_t buffLen)
 }
 
 /**
- * @brief Drive the solenoid valve based on water flow. e.g.
- * if water isn't flowing, deactivate the solenoid valve. If  
- * water is flowing, activate the solenoid valve.
-*/
-static void DriveValveBasedOnFlow(User user,uint32_t* oldApproxVolumePtr)
-{
-  uint8_t valvePin;
-  uint32_t newApproxVolume;
-  
-  switch(user)
-  {
-    case USER1:
-      valvePin = Pin::solenoidValve1;
-      newApproxVolume = lround(sensorData.volume1);
-      break;
-    case USER2:
-      valvePin = Pin::solenoidValve2;
-      newApproxVolume = lround(sensorData.volume2);
-      break;
-    case USER3:
-      valvePin = Pin::solenoidValve3;
-      newApproxVolume = lround(sensorData.volume3);
-      break;
-  }
-  if(newApproxVolume != oldApproxVolumePtr[user])
-  {
-    digitalWrite(valvePin,HIGH);
-    oldApproxVolumePtr[user] = newApproxVolume;
-  }
-  else
-  {
-    digitalWrite(valvePin,LOW);
-  }
-}
-
-/**
  * @brief Get user's units (or volume) from the SD card.
 */
 static uint32_t GetUnitsFromSD(User user)
@@ -249,6 +213,45 @@ static void PutUnitsIntoSD(User user,uint32_t* approxVolumePtr)
   }
 }
 
+/**
+ * @brief Drive the solenoid valve based on water flow. e.g.
+ * if water isn't flowing, deactivate the solenoid valve. If  
+ * water is flowing, activate the solenoid valve.
+*/
+static void DriveValveBasedOnFlow(User user,uint32_t* oldApproxVolumePtr)
+{
+  uint8_t valvePin;
+  uint32_t newApproxVolume;
+  
+  switch(user)
+  {
+    case USER1:
+      valvePin = Pin::solenoidValve1;
+      newApproxVolume = lround(sensorData.volume1);
+      break;
+    case USER2:
+      valvePin = Pin::solenoidValve2;
+      newApproxVolume = lround(sensorData.volume2);
+      break;
+    case USER3:
+      valvePin = Pin::solenoidValve3;
+      newApproxVolume = lround(sensorData.volume3);
+      break;
+  }
+  if(newApproxVolume != oldApproxVolumePtr[user])
+  {
+    digitalWrite(valvePin,HIGH);
+    oldApproxVolumePtr[user] = newApproxVolume;
+    hasVolumeChanged[user] = true;
+    noFlow[user] = false;
+  }
+  else
+  {
+    digitalWrite(valvePin,LOW);
+    noFlow[user] = true;
+  } 
+}
+
 void setup() 
 {
   Serial.begin(9600);
@@ -270,7 +273,6 @@ void setup()
 
 void loop() 
 {
-  const uint8_t numOfUsers = 3;
   const User user[numOfUsers] = {USER1,USER2,USER3};
   static uint32_t oldApproxVolume[numOfUsers]; //Array of previous value of units (or volumes) consumed
   uint32_t rechargedUnits[numOfUsers] = {0}; //Array of recharged units
@@ -296,16 +298,11 @@ void loop()
   for(uint8_t i = 0; i < numOfUsers; i++)
   {
     DriveValveBasedOnFlow(user[i],oldApproxVolume);
-  }
-
-  if((millis() - prevLogTime) >= sdLogInterval)
-  {
-    Serial.println("Logging data");
-    for(uint8_t i = 0; i < numOfUsers; i++)
+    if(hasVolumeChanged[i] && noFlow[i])
     {
       PutUnitsIntoSD(user[i],oldApproxVolume);
-    }    
-    prevLogTime = millis();
+      hasVolumeChanged[i] = false; 
+    }     
   }
 }
 
