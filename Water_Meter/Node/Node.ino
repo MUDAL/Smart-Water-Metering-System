@@ -15,6 +15,8 @@
  * NB: When water flows through the flow sensors, they generate pulses. The sensors 
  * output roughly 482 pulses per litre. For every pulse detected, 2.1mL of water must 
  * have flown through the sensor.
+ * 
+ * Type of solenoid valve used: Normally Open (NO)
 */
 
 enum User
@@ -214,11 +216,9 @@ static void PutUnitsIntoSD(User user,uint32_t* approxVolumePtr)
 }
 
 /**
- * @brief Drive the solenoid valve based on water flow. e.g.
- * if water isn't flowing, deactivate the solenoid valve. If  
- * water is flowing, activate the solenoid valve.
+ * @brief Drive the solenoid valve
 */
-static void DriveValveBasedOnFlow(User user,uint32_t* oldApproxVolumePtr)
+static void DriveSolenoidValve(User user,uint32_t* oldApproxVolumePtr)
 {
   uint8_t valvePin;
   uint32_t newApproxVolume;
@@ -240,16 +240,22 @@ static void DriveValveBasedOnFlow(User user,uint32_t* oldApproxVolumePtr)
   }
   if(newApproxVolume != oldApproxVolumePtr[user])
   {
-    digitalWrite(valvePin,HIGH);
     oldApproxVolumePtr[user] = newApproxVolume;
     hasVolumeChanged[user] = true;
     noFlow[user] = false;
   }
   else
   {
-    digitalWrite(valvePin,LOW);
     noFlow[user] = true;
-  } 
+  }
+  if(newApproxVolume > 0)
+  {
+    digitalWrite(valvePin,LOW); //turn valve on
+  }
+  else
+  {
+    digitalWrite(valvePin,HIGH); //turn valve off
+  }
 }
 
 void setup() 
@@ -264,10 +270,7 @@ void setup()
   }  
   pinMode(Pin::solenoidValve1,OUTPUT);
   pinMode(Pin::solenoidValve2,OUTPUT);
-  pinMode(Pin::solenoidValve3,OUTPUT);
-  digitalWrite(Pin::solenoidValve1,LOW);
-  digitalWrite(Pin::solenoidValve2,LOW);
-  digitalWrite(Pin::solenoidValve3,LOW);  
+  pinMode(Pin::solenoidValve3,OUTPUT);  
   TimerInit();  
 }
 
@@ -297,7 +300,7 @@ void loop()
 
   for(uint8_t i = 0; i < numOfUsers; i++)
   {
-    DriveValveBasedOnFlow(user[i],oldApproxVolume);
+    DriveSolenoidValve(user[i],oldApproxVolume);
     if(hasVolumeChanged[i] && noFlow[i])
     {
       PutUnitsIntoSD(user[i],oldApproxVolume);
