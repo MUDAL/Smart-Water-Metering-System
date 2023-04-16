@@ -216,9 +216,10 @@ static void PutUnitsIntoSD(User user,uint32_t* approxVolumePtr)
 }
 
 /**
- * @brief Drive the solenoid valve
+ * @brief Monitor the flow of water and control it by driving the solenoid
+ * valve appropriately.
 */
-static void DriveSolenoidValve(User user,uint32_t* oldApproxVolumePtr)
+static void MonitorAndControlFlow(User user,uint32_t* oldApproxVolumePtr)
 {
   uint8_t valvePin;
   uint32_t newApproxVolume;
@@ -300,7 +301,7 @@ void loop()
 
   for(uint8_t i = 0; i < numOfUsers; i++)
   {
-    DriveSolenoidValve(user[i],oldApproxVolume);
+    MonitorAndControlFlow(user[i],oldApproxVolume);
     if(hasVolumeChanged[i] && noFlow[i])
     {
       PutUnitsIntoSD(user[i],oldApproxVolume);
