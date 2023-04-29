@@ -230,7 +230,7 @@ void UtilityTask(void* pvParameters)
       Serial.println("Request-Util RX PASS\n");
     }
     
-    if((millis() - prevTime) >= 1000)
+    if((millis() - prevTime) >= 5000)
     {
       nrf24.stopListening();
       nrf24.write(&meterToUtil,sizeof(meterToUtil)); 
