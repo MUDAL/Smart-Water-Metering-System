@@ -24,6 +24,9 @@ Each user has a unique ID and PIN in order to log in to the smart meter.
 ## Software architecture  
 ![ss_sl drawio](https://user-images.githubusercontent.com/46250887/224769776-b892ccee-2bc6-4cb5-8b78-2ba92ab0d9e6.png)  
 
+## Prototype  
+![20230502_193608](https://user-images.githubusercontent.com/46250887/235760690-03b2623b-02af-4235-b862-dd89e8dd6ed7.jpg)  
+
 ## Credits  
 1. Atmega328 Interrupts: https://dronebotworkshop.com/interrupts/   
 2. NRF24L01 communication: https://www.instructables.com/Arduino-Wireless-Communication-Using-NRF24L01/   
