@@ -51,9 +51,9 @@ SoftwareSerial nodeSerial(Pin::nodeRx,Pin::nodeTx);
 MNI mni(&nodeSerial);
 
 //Flow sensors
-FlowSensor flowSensor1(Pin::flowSensor1);
-FlowSensor flowSensor2(Pin::flowSensor2);
-FlowSensor flowSensor3(Pin::flowSensor3);
+static FlowSensor flowSensor1(Pin::flowSensor1);
+static FlowSensor flowSensor2(Pin::flowSensor2);
+static FlowSensor flowSensor3(Pin::flowSensor3);
 
 //Current readings of the flow sensors (in mL)
 static volatile sensor_t sensorData;
@@ -61,6 +61,7 @@ static volatile sensor_t sensorData;
 const uint8_t numOfUsers = 3;
 static bool hasVolumeChanged[numOfUsers];
 static bool noFlow[numOfUsers];
+static bool prevLogTime[numOfUsers];
 
 /**
  * @brief Converts a string to an integer.
@@ -129,7 +130,8 @@ static void TimerInit(void)
 */
 static void SD_WriteFile(const char* path,const char* message)
 {
-  File file = SD.open(path,FILE_WRITE | O_TRUNC);
+  static File file;
+  file = SD.open(path,FILE_WRITE | O_TRUNC);
   if(file)
   {
     file.print(message); 
@@ -147,7 +149,8 @@ static void SD_WriteFile(const char* path,const char* message)
 static void SD_ReadFile(const char* path,char* buff,uint8_t buffLen)
 {
   uint8_t i = 0;
-  File file = SD.open(path);
+  static File file;
+  file = SD.open(path);
   if(file)
   {
     while(file.available())
@@ -169,7 +172,7 @@ static void SD_ReadFile(const char* path,char* buff,uint8_t buffLen)
 static uint32_t GetUnitsFromSD(User user)
 {
   uint32_t approxVolume = 0;
-  const uint8_t buffLen = 10;
+  const uint8_t buffLen = 15;
   char fileBuff[buffLen + 1] = {0};
   
   switch(user)
@@ -184,8 +187,6 @@ static uint32_t GetUnitsFromSD(User user)
       SD_ReadFile("user3.txt",fileBuff,buffLen);
       break;
   }
-  Serial.print("data read from SD = ");
-  Serial.println(fileBuff);
   StringToInteger(fileBuff,&approxVolume);
   return approxVolume;
 }
@@ -195,12 +196,10 @@ static uint32_t GetUnitsFromSD(User user)
 */
 static void PutUnitsIntoSD(User user,uint32_t* approxVolumePtr)
 {
-  const uint8_t buffLen = 10;
+  const uint8_t buffLen = 15;
   char fileBuff[buffLen + 1] = {0};
   
   IntegerToString(approxVolumePtr[user],fileBuff);
-  Serial.print("data written to SD = ");
-  Serial.println(fileBuff); 
   switch(user)
   {
     case USER1:
@@ -244,6 +243,7 @@ static void MonitorAndControlFlow(User user,uint32_t* oldApproxVolumePtr)
     oldApproxVolumePtr[user] = newApproxVolume;
     hasVolumeChanged[user] = true;
     noFlow[user] = false;
+    prevLogTime[user] = millis();
   }
   else
   {
@@ -261,13 +261,18 @@ static void MonitorAndControlFlow(User user,uint32_t* oldApproxVolumePtr)
 
 void setup() 
 {
-  Serial.begin(9600);
   if(SD.begin(Pin::chipSelect))
   { 
-    Serial.println("SD INIT: SUCCESS");
-    flowSensor1.UpdateVolume(GetUnitsFromSD(USER1));
-    flowSensor2.UpdateVolume(GetUnitsFromSD(USER2));
-    flowSensor3.UpdateVolume(GetUnitsFromSD(USER3));
+    const User user[numOfUsers] = {USER1,USER2,USER3};
+    uint32_t prevVolume[numOfUsers] = {0,0,0};
+    for(uint8_t i = 0; i < numOfUsers; i++)
+    {
+      prevVolume[i] = GetUnitsFromSD(user[i]);
+      delay(250);
+    }
+    flowSensor1.UpdateVolume(prevVolume[USER1]);
+    flowSensor2.UpdateVolume(prevVolume[USER2]);
+    flowSensor3.UpdateVolume(prevVolume[USER3]);
   }  
   pinMode(Pin::solenoidValve1,OUTPUT);
   pinMode(Pin::solenoidValve2,OUTPUT);
@@ -288,14 +293,7 @@ void loop()
     mni.ReceiveData(rechargedUnits,rxBufferSize);   
     flowSensor1.UpdateVolume(rechargedUnits[USER1] * 1000);
     flowSensor2.UpdateVolume(rechargedUnits[USER2] * 1000);
-    flowSensor3.UpdateVolume(rechargedUnits[USER3] * 1000);
-    //Debug
-    Serial.print("volume 1: ");
-    Serial.println(sensorData.volume1);   
-    Serial.print("volume 2: ");
-    Serial.println(sensorData.volume2); 
-    Serial.print("volume 3: ");
-    Serial.println(sensorData.volume3);     
+    flowSensor3.UpdateVolume(rechargedUnits[USER3] * 1000);   
     mni.TransmitData(&sensorData,sizeof(sensorData));
   }
 
@@ -304,8 +302,12 @@ void loop()
     MonitorAndControlFlow(user[i],oldApproxVolume);
     if(hasVolumeChanged[i] && noFlow[i])
     {
-      PutUnitsIntoSD(user[i],oldApproxVolume);
-      hasVolumeChanged[i] = false; 
+      if((millis() - prevLogTime[i]) >= 10000)
+      {
+        PutUnitsIntoSD(user[i],oldApproxVolume);
+        hasVolumeChanged[i] = false;
+        prevLogTime[i] = millis();  
+      }
     }     
   }
 }
