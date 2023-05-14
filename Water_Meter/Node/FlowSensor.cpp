@@ -5,7 +5,7 @@ FlowSensor::FlowSensor(uint8_t pin)
 {
   this->pin = pin;
   this->isPrevHigh = false;
-  this->volume = 0;
+  this->volume = 0.0;
   pinMode(this->pin,INPUT);
 }
 
