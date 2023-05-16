@@ -24,8 +24,9 @@ Each user has a unique ID and PIN in order to log in to the smart meter.
 ## Software architecture  
 ![ss_sl drawio](https://user-images.githubusercontent.com/46250887/224769776-b892ccee-2bc6-4cb5-8b78-2ba92ab0d9e6.png)  
 
-## Prototype  
+## Images of prototype  
 ![20230502_193608](https://user-images.githubusercontent.com/46250887/235760690-03b2623b-02af-4235-b862-dd89e8dd6ed7.jpg)  
+![Screenshot_20230516-172842_Gallery](https://github.com/MUDAL/Smart-Water-Metering-System/assets/46250887/3339a2f5-efa4-4792-8685-fb433ba3cda9)  
 
 ## Credits  
 1. Atmega328 Interrupts: https://dronebotworkshop.com/interrupts/   
