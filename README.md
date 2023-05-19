@@ -25,6 +25,8 @@ Each user has a unique ID and PIN in order to log in to the smart meter.
 ![ss_sl drawio](https://user-images.githubusercontent.com/46250887/224769776-b892ccee-2bc6-4cb5-8b78-2ba92ab0d9e6.png)  
 
 ## Images of prototype  
+![20230517_144221](https://github.com/MUDAL/Smart-Water-Metering-System/assets/46250887/9a3ec705-e805-4dbc-885e-fa0ed10168e3)  
+![IMG-20230516-WA0016](https://github.com/MUDAL/Smart-Water-Metering-System/assets/46250887/d9fe33db-3429-4c61-bf5e-b39b38a534cd)  
 ![20230502_193608](https://user-images.githubusercontent.com/46250887/235760690-03b2623b-02af-4235-b862-dd89e8dd6ed7.jpg)  
 ![Screenshot_20230516-172842_Gallery](https://github.com/MUDAL/Smart-Water-Metering-System/assets/46250887/3339a2f5-efa4-4792-8685-fb433ba3cda9)  
 
